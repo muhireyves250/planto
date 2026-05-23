@@ -26,9 +26,9 @@ import {
   Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tooltip
 } from 'recharts';
 
-const ANALYTICS_URL = 'http://localhost:8000/predictions';
+const ANALYTICS_URL = 'http://localhost:8080/predictions';
 
-const Reports = () => {
+const Reports = ({ setHeaderActions }) => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -36,7 +36,12 @@ const Reports = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch(ANALYTICS_URL);
+        const user = JSON.parse(localStorage.getItem('planto_user'));
+        const response = await fetch(ANALYTICS_URL, {
+          headers: {
+            ...(user?.access_token ? { 'Authorization': `Bearer ${user.access_token}` } : {})
+          }
+        });
         const json = await response.json();
         // Sort by timestamp descending
         const sorted = (json || []).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
@@ -50,14 +55,30 @@ const Reports = () => {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    if (setHeaderActions && !loading) {
+      setHeaderActions(
+        <>
+          <div className="search-bar-mini">
+            <Search size={16} />
+            <input 
+              type="text" 
+              placeholder="Filter by crop..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <button onClick={exportCSV} className="pro-action-btn primary shadow-btn">
+            <FileSpreadsheet size={18} />
+            <span>Export Dataset</span>
+          </button>
+        </>
+      );
+    }
+  }, [searchTerm, data, loading, setHeaderActions]);
+
   if (loading) return (
-    <div className="analytics-container animate-2">
-      <header className="page-header pro-header">
-        <div className="header-left">
-          <h1 className="welcome-text">Harvest Intelligence <span className="pro-badge">RECORDS</span></h1>
-          <div className="date-text"><Activity size={14} className="lucide-spin" /> Synchronizing database...</div>
-        </div>
-      </header>
+    <div className="dashboard-view animate-2" style={{ paddingTop: 0 }}>
       
       <div className="stats-strip">
         {[1,2,3,4].map(i => (
@@ -128,31 +149,7 @@ const Reports = () => {
   };
 
   return (
-    <div className="analytics-container animate-2">
-      <header className="page-header pro-header">
-        <div className="header-left">
-          <h1 className="welcome-text">Harvest Intelligence <span className="pro-badge">RECORDS</span></h1>
-          <div className="date-text">
-            <History size={14} color="var(--accent-emerald)" className="lucide-pulse" /> 
-            Comprehensive audit of {data.length} historical diagnostic cycles
-          </div>
-        </div>
-        <div className="header-actions">
-          <div className="search-bar-mini">
-            <Search size={16} />
-            <input 
-              type="text" 
-              placeholder="Filter by crop..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <button onClick={exportCSV} className="pro-action-btn primary shadow-btn">
-            <FileSpreadsheet size={18} />
-            <span>Export Dataset</span>
-          </button>
-        </div>
-      </header>
+    <div className="dashboard-view animate-2" style={{ paddingTop: 0 }}>
 
       {/* Reports Welcome Banner - Matching Dashboard Template */}
       <div className="pro-welcome-banner farmer-banner animate-1">
@@ -170,7 +167,7 @@ const Reports = () => {
       </div>
 
       {loading ? (
-        <div className="analytics-container animate-2" style={{padding: 0}}>
+        <div className="dashboard-view animate-2" style={{padding: 0}}>
           <div className="stats-strip" style={{marginTop: '1.5rem'}}>
             {[1,2,3,4].map(i => (
               <div key={i} className="stat-pill-card skeleton-card skeleton-shimmer">
@@ -203,31 +200,24 @@ const Reports = () => {
           {/* Summary Pills - Matching Analytics/My Crops */}
           <div className="stats-strip animate-fade-in">
             <div className="stat-pill-card">
-              <div className="stat-icon-circle blue-soft"><ShieldCheck size={20} color="#3b82f6" /></div>
+              <div className="stat-icon-circle blue-soft"><Layers size={20} color="#3b82f6" /></div>
               <div className="stat-data">
-                <span className="stat-label">Land Readiness</span>
-                <span className="stat-main">84%</span>
+                <span className="stat-label">Active Crops</span>
+                <span className="stat-main">{Math.ceil(data.length * 0.4)} Active</span>
               </div>
             </div>
             <div className="stat-pill-card">
-              <div className="stat-icon-circle green-soft"><BadgeCheck size={20} color="#10b981" /></div>
+              <div className="stat-icon-circle orange-soft"><History size={20} color="#f59e0b" /></div>
               <div className="stat-data">
-                <span className="stat-label">Avg. Precision</span>
-                <span className="stat-main">{avgConfidence}%</span>
+                <span className="stat-label">Past Crops</span>
+                <span className="stat-main">{Math.floor(data.length * 0.6)} Harvested</span>
               </div>
             </div>
             <div className="stat-pill-card">
-              <div className="stat-icon-circle orange-soft"><Zap size={20} color="#f59e0b" /></div>
+              <div className="stat-icon-circle green-soft"><TrendingUp size={20} color="#10b981" /></div>
               <div className="stat-data">
-                <span className="stat-label">Active Alerts</span>
-                <span className="stat-main">3</span>
-              </div>
-            </div>
-            <div className="stat-pill-card">
-              <div className="stat-icon-circle yellow-soft"><Layers size={20} color="#eab308" /></div>
-              <div className="stat-data">
-                <span className="stat-label">Total Cycles</span>
-                <span className="stat-main">{data.length}</span>
+                <span className="stat-label">Health Trend</span>
+                <span className="stat-main">Stable</span>
               </div>
             </div>
           </div>
@@ -243,7 +233,7 @@ const Reports = () => {
               </div>
             </div>
             <div className="chart-container" style={{height: '240px'}}>
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
                   <PolarGrid stroke="rgba(0,0,0,0.05)" />
                   <PolarAngleAxis dataKey="subject" tick={{fontSize: 10, fill: 'var(--text-muted)', fontWeight: 600}} />

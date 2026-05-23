@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Leaf, Mail, Lock, User, ArrowRight, Eye, EyeOff, KeyRound } from 'lucide-react';
+import { Leaf, Mail, Lock, User, ArrowRight, Eye, EyeOff, KeyRound, Wand2, ShieldCheck } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 import './AuthPage.css';
 
@@ -9,6 +9,7 @@ const AuthPage = ({ onLogin, onBack }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [role, setRole] = useState('farmer');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
@@ -22,14 +23,17 @@ const AuthPage = ({ onLogin, onBack }) => {
       setIsLoading(true);
       setError(null);
       try {
-        const res = await fetch('http://127.0.0.1:8000/auth/google', {
+        const res = await fetch('http://127.0.0.1:8080/auth/google', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: tokenResponse.access_token }),
+          body: JSON.stringify({ token: tokenResponse.access_token, role }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'Google Auth Failed');
-        onLogin(data.user);
+        onLogin({
+          access_token: data.access_token,
+          ...data.user
+        });
       } catch (err) {
         console.error('Google Auth Error:', err);
         setError(err.message);
@@ -48,12 +52,12 @@ const AuthPage = ({ onLogin, onBack }) => {
     setError(null);
     setSuccessMsg(null);
     setIsLoading(true);
-    
+
     try {
-      const endpoint = isLogin ? 'http://127.0.0.1:8000/login' : 'http://127.0.0.1:8000/register';
-      const body = isLogin 
-        ? { email, password } 
-        : { email, password, full_name: name };
+      const endpoint = isLogin ? 'http://127.0.0.1:8080/login' : 'http://127.0.0.1:8080/register';
+      const body = isLogin
+        ? { email, password, role }
+        : { email, password, full_name: name, role };
 
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -86,14 +90,17 @@ const AuthPage = ({ onLogin, onBack }) => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch('http://127.0.0.1:8000/verify-otp', {
+      const response = await fetch('http://127.0.0.1:8080/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, otp })
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || 'Invalid verification code');
-      onLogin(data.user);
+      onLogin({
+        access_token: data.access_token,
+        ...data.user
+      });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -111,14 +118,14 @@ const AuthPage = ({ onLogin, onBack }) => {
     setError(null);
     setSuccessMsg(null);
     try {
-      const response = await fetch('http://127.0.0.1:8000/forgot-password', {
+      const response = await fetch('http://127.0.0.1:8080/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || 'Failed to send reset link');
-      
+
       setForgotState('reset');
       setSuccessMsg("A password reset code has been sent to your email.");
     } catch (err) {
@@ -134,14 +141,14 @@ const AuthPage = ({ onLogin, onBack }) => {
     setError(null);
     setSuccessMsg(null);
     try {
-      const response = await fetch('http://127.0.0.1:8000/reset-password', {
+      const response = await fetch('http://127.0.0.1:8080/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, otp, new_password: newPassword })
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || 'Failed to reset password');
-      
+
       setForgotState('none');
       setIsLogin(true);
       setOtp('');
@@ -184,9 +191,9 @@ const AuthPage = ({ onLogin, onBack }) => {
               <p>
                 {forgotState !== 'none'
                   ? "Don't worry, it happens to the best of us. Let's get you back into your account securely."
-                  : isLogin 
-                  ? "Sign in to access your farm diagnostics, crop health reports, and precision analytics."
-                  : "Create an account to start optimizing your yields with AI-driven agricultural insights."}
+                  : isLogin
+                    ? "Sign in to access your farm diagnostics, crop health reports, and precision analytics."
+                    : "Create an account to start optimizing your yields with AI-driven agricultural insights."}
               </p>
             </div>
             <div className="visual-footer">
@@ -200,20 +207,20 @@ const AuthPage = ({ onLogin, onBack }) => {
           <div className="form-wrapper">
             <div className="form-header">
               <button type="button" className="back-link" onClick={handleBackNavigation}>
-                <ArrowRight className="rotate-180" size={16} /> 
+                <ArrowRight className="rotate-180" size={16} />
                 {forgotState !== 'none' ? "Back to Login" : showOTP ? "Back to Login" : "Back to Landing"}
               </button>
               <h1>
                 {forgotState === 'request' ? "Forgot Password" :
-                 forgotState === 'reset' ? "Create New Password" :
-                 showOTP ? "Verify Login" : 
-                 isLogin ? "Sign In" : "Create Account"}
+                  forgotState === 'reset' ? "Create New Password" :
+                    showOTP ? "Verify Login" :
+                      isLogin ? "Sign In" : "Create Account"}
               </h1>
               <p>
                 {forgotState === 'request' ? "Enter your email to receive a reset code" :
-                 forgotState === 'reset' ? "Enter the 6-digit code and your new password" :
-                 showOTP ? "Enter the 6-digit code sent to your email" : 
-                 isLogin ? "Enter your credentials to access your account" : "Sign up to start your green revolution today"}
+                  forgotState === 'reset' ? "Enter the 6-digit code and your new password" :
+                    showOTP ? "Enter the 6-digit code sent to your email" :
+                      isLogin ? "Enter your credentials to access your account" : "Sign up to start your green revolution today"}
               </p>
             </div>
 
@@ -222,9 +229,9 @@ const AuthPage = ({ onLogin, onBack }) => {
                 {error}
               </div>
             )}
-            
+
             {successMsg && (
-              <div className="auth-error-alert" style={{backgroundColor: '#f0fdf4', color: '#166534'}}>
+              <div className="auth-error-alert" style={{ backgroundColor: '#f0fdf4', color: '#166534' }}>
                 {successMsg}
               </div>
             )}
@@ -235,12 +242,12 @@ const AuthPage = ({ onLogin, onBack }) => {
                   <label>Email Address</label>
                   <div className="input-wrapper">
                     <Mail className="input-icon" size={18} />
-                    <input 
-                      type="email" 
-                      placeholder="name@company.com" 
+                    <input
+                      type="email"
+                      placeholder="name@company.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      required 
+                      required
                     />
                   </div>
                 </div>
@@ -254,13 +261,13 @@ const AuthPage = ({ onLogin, onBack }) => {
                   <label>Reset Code</label>
                   <div className="input-wrapper">
                     <KeyRound className="input-icon" size={18} />
-                    <input 
-                      type="text" 
-                      placeholder="123456" 
+                    <input
+                      type="text"
+                      placeholder="123456"
                       value={otp}
                       onChange={(e) => setOtp(e.target.value)}
                       maxLength={6}
-                      required 
+                      required
                     />
                   </div>
                 </div>
@@ -268,15 +275,15 @@ const AuthPage = ({ onLogin, onBack }) => {
                   <label>New Password</label>
                   <div className="input-wrapper">
                     <Lock className="input-icon" size={18} />
-                    <input 
-                      type={showPassword ? "text" : "password"} 
-                      placeholder="••••••••" 
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
-                      required 
+                      required
                     />
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       className="toggle-password"
                       onClick={() => setShowPassword(!showPassword)}
                     >
@@ -294,13 +301,13 @@ const AuthPage = ({ onLogin, onBack }) => {
                   <label>Verification Code</label>
                   <div className="input-wrapper">
                     <Lock className="input-icon" size={18} />
-                    <input 
-                      type="text" 
-                      placeholder="123456" 
+                    <input
+                      type="text"
+                      placeholder="123456"
                       value={otp}
                       onChange={(e) => setOtp(e.target.value)}
                       maxLength={6}
-                      required 
+                      required
                     />
                   </div>
                 </div>
@@ -309,72 +316,91 @@ const AuthPage = ({ onLogin, onBack }) => {
                 </button>
               </form>
             ) : (
-            <form onSubmit={handleSubmit} className="auth-form">
-              {!isLogin && (
-                <div className="form-group">
-                  <label>Full Name</label>
-                  <div className="input-wrapper">
-                    <User className="input-icon" size={18} />
-                    <input 
-                      type="text" 
-                      placeholder="John Doe" 
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      required 
-                    />
+              <>
+                <div className="role-selector-container">
+                  <div className={`role-option ${role === 'farmer' ? 'active' : ''}`} onClick={() => setRole('farmer')}>
+                    <Leaf size={16} />
+                    <span>Farmer</span>
                   </div>
+                  <div className={`role-option ${role === 'agronomist' ? 'active' : ''}`} onClick={() => setRole('agronomist')}>
+                    <Wand2 size={16} />
+                    <span>Agronomist</span>
+                  </div>
+                  {isLogin && (
+                    <div className={`role-option ${role === 'admin' ? 'active' : ''}`} onClick={() => setRole('admin')}>
+                      <ShieldCheck size={16} />
+                      <span>Admin</span>
+                    </div>
+                  )}
                 </div>
-              )}
 
-              <div className="form-group">
-                <label>Email Address</label>
-                <div className="input-wrapper">
-                  <Mail className="input-icon" size={18} />
-                  <input 
-                    type="email" 
-                    placeholder="name@company.com" 
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required 
-                  />
-                </div>
-              </div>
+                <form onSubmit={handleSubmit} className="auth-form">
+                  {!isLogin && (
+                    <div className="form-group">
+                      <label>Full Name</label>
+                      <div className="input-wrapper">
+                        <User className="input-icon" size={18} />
+                        <input
+                          type="text"
+                          placeholder="John Doe"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          required
+                        />
+                      </div>
+                    </div>
+                  )}
 
-              <div className="form-group">
-                <div className="label-row">
-                  <label>Password</label>
-                  {isLogin && <a href="#" className="forgot-link" onClick={(e) => { e.preventDefault(); setForgotState('request'); }}>Forgot?</a>}
-                </div>
-                <div className="input-wrapper">
-                  <Lock className="input-icon" size={18} />
-                  <input 
-                    type={showPassword ? "text" : "password"} 
-                    placeholder="••••••••" 
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required 
-                  />
-                  <button 
-                    type="button" 
-                    className="toggle-password"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  <div className="form-group">
+                    <label>Email Address</label>
+                    <div className="input-wrapper">
+                      <Mail className="input-icon" size={18} />
+                      <input
+                        type="email"
+                        placeholder="name@company.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <div className="label-row">
+                      <label>Password</label>
+                      {isLogin && <a href="#" className="forgot-link" onClick={(e) => { e.preventDefault(); setForgotState('request'); }}>Forgot?</a>}
+                    </div>
+                    <div className="input-wrapper">
+                      <Lock className="input-icon" size={18} />
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="toggle-password"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <button type="submit" className="submit-btn" disabled={isLoading}>
+                    {isLoading ? (
+                      <>Authenticating...</>
+                    ) : (
+                      <>
+                        {isLogin ? "Sign In" : "Create Account"}
+                        <ArrowRight size={18} />
+                      </>
+                    )}
                   </button>
-                </div>
-              </div>
-
-              <button type="submit" className="submit-btn" disabled={isLoading}>
-                {isLoading ? (
-                  <>Authenticating...</>
-                ) : (
-                  <>
-                    {isLogin ? "Sign In" : "Create Account"}
-                    <ArrowRight size={18} />
-                  </>
-                )}
-              </button>
-            </form>
+                </form>
+              </>
             )}
 
             {forgotState === 'none' && !showOTP && (

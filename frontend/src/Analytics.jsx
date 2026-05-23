@@ -15,7 +15,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 
-const ANALYTICS_URL = 'http://localhost:8000/predictions';
+const ANALYTICS_URL = 'http://localhost:8080/predictions';
 
 const COLORS = ['#065f46', '#10b981', '#34d399', '#6ee7b7', '#a7f3d0', '#ecfdf5'];
 
@@ -27,7 +27,12 @@ const Analytics = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch(ANALYTICS_URL);
+        const user = JSON.parse(localStorage.getItem('planto_user'));
+        const response = await fetch(ANALYTICS_URL, {
+          headers: {
+            ...(user?.access_token ? { 'Authorization': `Bearer ${user.access_token}` } : {})
+          }
+        });
         if (!response.ok) throw new Error('Failed to fetch analytics data');
         const json = await response.json();
         setData(json);
@@ -164,7 +169,7 @@ const Analytics = () => {
                   </div>
                 </div>
                 <div className="chart-container" style={{height: '180px'}}>
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                     <PieChart>
                       <Pie
                         data={pieData}
@@ -196,7 +201,7 @@ const Analytics = () => {
                   </div>
                 </div>
                 <div className="chart-container" style={{height: '180px'}}>
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                     <LineChart data={timelineData}>
                       <defs>
                         <linearGradient id="colorConf" x1="0" y1="0" x2="0" y2="1">

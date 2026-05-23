@@ -3,7 +3,12 @@ import Analytics from './Analytics';
 import Reports from './Reports';
 import Settings from './Settings';
 import LandingPage from './LandingPage';
-import AuthPage from './AuthPage'; // Imported AuthPage correctly
+import AuthPage from './AuthPage';
+import Monitoring from './pages/Monitoring';
+import SoilTest from './pages/SoilTest';
+import FarmManagement from './pages/FarmManagement';
+import { monitoringApi } from './api/monitoringApi';
+import { farmApi, weatherApi, alertApi } from './api/farmApi';
 import { 
   Search,
   Bell,
@@ -34,10 +39,13 @@ import {
   Check,
   Wind,
   ShieldCheck,
-  LogOut
+  LogOut,
+  ChevronRight,
+  History,
+  Settings as LucideSettings
 } from 'lucide-react';
 
-const API_URL = 'http://127.0.0.1:8000/predict';
+const API_URL = 'http://127.0.0.1:8080/predict';
 
 function App() {
   const [loading, setLoading] = useState(false);
@@ -47,29 +55,36 @@ function App() {
   const [envError, setEnvError] = useState(null);
   const [locationActive, setLocationActive] = useState(true);
   const [toast, setToast] = useState(null);
+  const [alerts, setAlerts] = useState([]);
+  const [unreadAlertsCount, setUnreadAlertsCount] = useState(0);
+  const [farmsCount, setFarmsCount] = useState(0);
+  const [cropsCount, setCropsCount] = useState(0);
   
   const [user, setUser] = useState(() => {
-    const savedUser = localStorage.getItem('planto_user');
-    return savedUser ? JSON.parse(savedUser) : null;
+    try {
+      const savedUser = localStorage.getItem('planto_user');
+      return (savedUser && savedUser !== 'undefined') ? JSON.parse(savedUser) : null;
+    } catch (err) {
+      console.error("Failed to parse planto_user:", err);
+      localStorage.removeItem('planto_user');
+      return null;
+    }
   });
   
-  const [isAuthenticated, setIsAuthenticated] = useState(() => !!localStorage.getItem('planto_user'));
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    try {
+      const savedUser = localStorage.getItem('planto_user');
+      return !!(savedUser && savedUser !== 'undefined');
+    } catch (err) {
+      return false;
+    }
+  });
   
   const [showAuth, setShowAuth] = useState(false);
-
-  const handleLogout = () => {
-    localStorage.removeItem('planto_user');
-    setIsAuthenticated(false);
-    setUser(null);
-    setShowAuth(false);
-    setResult(null);
-  };
-
-
+  const [headerActions, setHeaderActions] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
-
+  const [soilTestParams, setSoilTestParams] = useState({ mode: 'prediction', plantId: null, cropName: '' });
   const [weatherData, setWeatherData] = useState({ temp: '24', condition: 'Sunny', humidity: '62' });
-  
   const [formData, setFormData] = useState({
     n: '',
     p: '',
@@ -81,6 +96,150 @@ function App() {
   });
   const [formErrors, setFormErrors] = useState({});
   const [timestamp, setTimestamp] = useState(null);
+
+  const handleLogout = () => {
+    localStorage.removeItem('planto_user');
+    setIsAuthenticated(false);
+    setUser(null);
+    setShowAuth(false);
+    setResult(null);
+    setActiveTab('dashboard');
+  };
+
+  const onLoginSuccess = (userData) => {
+    localStorage.setItem('planto_user', JSON.stringify(userData));
+    setUser(userData);
+    setIsAuthenticated(true);
+    
+    // Role-based redirection
+    if (userData.role === 'admin') {
+      setActiveTab('admin');
+    } else if (userData.role === 'agronomist') {
+      setActiveTab('agronomist');
+    } else {
+      setActiveTab('dashboard');
+    }
+  };
+
+  const handlePlantCrop = async () => {
+    if (!result?.crop) return;
+    
+    if (user?.id) {
+      try {
+        setLoading(true);
+        await monitoringApi.plantCrop(user.id, result.crop, 'pending');
+        setToast({ type: 'success', message: `${result.crop} has been added to your monitoring list!` });
+        setTimeout(() => setToast(null), 5000);
+        setResult(null);
+        setActiveTab('monitoring');
+      } catch (err) {
+        setToast({ type: 'error', message: 'Failed to plant crop. Please try again.' });
+        setTimeout(() => setToast(null), 5000);
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      try {
+        setLoading(true);
+        const guestCrops = JSON.parse(localStorage.getItem('planto_guest_crops')) || [];
+        const newGuestCrop = {
+          id: "guest-" + Math.random().toString(36).substring(2, 11),
+          crop_name: result.crop,
+          planting_date: new Date().toISOString().split('T')[0],
+          status: "pending",
+          monitoring_data: [{
+            recorded_at: new Date().toISOString(),
+            nitrogen: parseFloat(formData.n) || 120,
+            phosphorus: parseFloat(formData.p) || 60,
+            potassium: parseFloat(formData.k) || 40,
+            ph: parseFloat(formData.ph) || 6.5,
+            moisture: 75.0,
+            temperature: parseFloat(formData.temperature) || 24.0,
+            humidity: parseFloat(formData.humidity) || 62.0
+          }],
+          health_history: [{
+            id: "hist-1",
+            health_score: 100.0,
+            risk_level: "Healthy",
+            stage: "Germination",
+            notes: "Initial soil configuration.",
+            created_at: new Date().toISOString()
+          }],
+          fertilizer_plans: [{
+            id: "fert-1",
+            fertilizer_type: "None",
+            quantity_kg: 0,
+            explanation: "Optimal soil balance. No synthetic adjustments needed.",
+            created_at: new Date().toISOString()
+          }]
+        };
+        guestCrops.push(newGuestCrop);
+        localStorage.setItem('planto_guest_crops', JSON.stringify(guestCrops));
+        
+        setToast({ type: 'success', message: `${result.crop} has been added to your offline monitoring list!` });
+        setTimeout(() => setToast(null), 5000);
+        setResult(null);
+        setActiveTab('monitoring');
+      } catch (err) {
+        setToast({ type: 'error', message: 'Failed to plant crop locally.' });
+        setTimeout(() => setToast(null), 5000);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const handleDeclineCrop = () => {
+    setResult(null);
+    setToast({ type: 'success', message: 'Crop recommendation declined. Form cleared.' });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const fetchAlerts = async () => {
+    if (!isAuthenticated) return;
+    try {
+      const data = await alertApi.getAlerts();
+      setAlerts(data);
+      setUnreadAlertsCount(data.filter(a => !a.is_read).length);
+    } catch (err) {
+      console.error('Failed to fetch alerts:', err);
+      if (err.status === 401) {
+        handleLogout();
+      }
+    }
+  };
+
+  const fetchDashboardStats = async () => {
+    if (!isAuthenticated || !user?.id) return;
+    try {
+      const farmsData = await farmApi.getFarms();
+      setFarmsCount(farmsData.length);
+      const cropsData = await monitoringApi.getMyCrops(user.id);
+      setCropsCount(cropsData.length);
+    } catch (err) {
+      console.error('Failed to fetch dashboard stats:', err);
+    }
+  };
+
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      fetchAlerts();
+      fetchDashboardStats();
+      const interval = setInterval(() => {
+        fetchAlerts();
+        fetchDashboardStats();
+      }, 30000);
+      return () => clearInterval(interval);
+    } else {
+      const guestCrops = JSON.parse(localStorage.getItem('planto_guest_crops')) || [];
+      setCropsCount(guestCrops.length);
+      setFarmsCount(0);
+    }
+  }, [isAuthenticated, user?.id]);
+
+  React.useEffect(() => {
+    setHeaderActions(null);
+  }, [activeTab]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -136,7 +295,10 @@ function App() {
       await new Promise(r => setTimeout(r, 800));
       const response = await fetch(API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(user?.access_token ? { 'Authorization': `Bearer ${user.access_token}` } : {})
+        },
         body: JSON.stringify(reqData)
       });
 
@@ -174,48 +336,22 @@ function App() {
 
     navigator.geolocation.getCurrentPosition(async (position) => {
       const { latitude, longitude } = position.coords;
-      const apiKey = import.meta.env.VITE_OPENWEATHER_API_KEY; 
-
+      
       try {
-        let temp, humidity, rainfall;
-
-        if (!apiKey || apiKey === 'YOUR_OPENWEATHER_API_KEY') {
-          // If no API key is provided, use realistic mock data for the demo
-          console.log("No OpenWeather API key found. Using mock weather data.");
-          await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network delay
-          temp = (22 + Math.random() * 5).toFixed(2);
-          humidity = (60 + Math.random() * 20).toFixed(2);
-          rainfall = (Math.random() * 50).toFixed(2);
-        } else {
-          // Use real OpenWeather API if key is present
-          const response = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${latitude}&lon=${longitude}&units=metric&appid=${apiKey}`);
-          if (!response.ok) throw new Error("Failed to fetch forecast data. Check your API Key.");
-
-          const data = await response.json();
-          let tempSum = 0;
-          let humSum = 0;
-          let totalRain = 0;
-          let count = data.list.length;
-
-          data.list.forEach(item => {
-              tempSum += item.main.temp;
-              humSum += item.main.humidity;
-              if (item.rain && item.rain['3h']) {
-                  totalRain += item.rain['3h'];
-              }
-          });
-          
-          temp = (tempSum / count).toFixed(2);
-          humidity = (humSum / count).toFixed(2);
-          rainfall = totalRain.toFixed(2);
-        }
-
+        const data = await weatherApi.getWeather(latitude, longitude);
+        
         setFormData(prev => ({
           ...prev,
-          temperature: temp,
-          humidity: humidity,
-          rainfall: rainfall
+          temperature: data.temp,
+          humidity: data.humidity,
+          rainfall: data.rainfall
         }));
+        
+        setWeatherData({
+          temp: Math.round(data.temp),
+          condition: data.condition,
+          humidity: data.humidity
+        });
         
         setFormErrors(prev => ({ ...prev, temperature: null, humidity: null, rainfall: null }));
 
@@ -236,15 +372,70 @@ function App() {
   
   const today = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
 
+  const getHeaderInfo = () => {
+    switch (activeTab) {
+      case 'dashboard':
+        return {
+          title: "Home",
+          badge: "MY FARM OVERVIEW",
+          subtext: (
+            <>
+              <Wand2 size={14} color="var(--accent-emerald)" /> My Farm Hub • {today}
+            </>
+          )
+        };
+      case 'soil-test':
+        return {
+          title: "Soil Testing Lab",
+          badge: "READY",
+          subtext: (
+            <>
+              <Activity size={14} color="#10b981" className="lucide-pulse" /> Diagnostic System Online • {today}
+            </>
+          )
+        };
+      case 'monitoring':
+        return {
+          title: "Monitoring",
+          badge: "CORE INTELLIGENCE",
+          subtext: (
+            <>
+              <TrendingUp size={14} color="#10b981" /> Post-Planting Health Tracking Active
+            </>
+          )
+        };
+      case 'crop-status':
+        return {
+          title: "Crop Status",
+          badge: "LIFECYCLE HISTORY",
+          subtext: (
+            <>
+              <History size={14} color="var(--accent-emerald)" className="lucide-pulse" /> Full visibility of farming lifecycle
+            </>
+          )
+        };
+      case 'settings':
+        return {
+          title: "System Settings",
+          badge: "PRO-FARMER",
+          subtext: (
+            <>
+              <LucideSettings size={12} color="var(--accent-emerald)" /> Platform Configuration
+            </>
+          )
+        };
+      default:
+        return { title: "", badge: "", subtext: "" };
+    }
+  };
+
+  const headerInfo = getHeaderInfo();
+
   if (!isAuthenticated) {
     if (showAuth) {
       return (
         <AuthPage 
-          onLogin={(userData) => { 
-            localStorage.setItem('planto_user', JSON.stringify(userData));
-            setUser(userData); 
-            setIsAuthenticated(true); 
-          }} 
+          onLogin={onLoginSuccess} 
           onBack={() => setShowAuth(false)} 
         />
       );
@@ -265,345 +456,219 @@ function App() {
             Planto
           </div>
           <div className="nav-links">
-            <div className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>Home</div>
-            <div className={`nav-item ${activeTab === 'test-soil' ? 'active' : ''}`} onClick={() => setActiveTab('test-soil')}>Check My Soil</div>
-            <div className={`nav-item ${activeTab === 'analytics' ? 'active' : ''}`} onClick={() => setActiveTab('analytics')}>My Crops</div>
-            <div className={`nav-item ${activeTab === 'reports' ? 'active' : ''}`} onClick={() => setActiveTab('reports')}>Records</div>
-            <div className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>Settings</div>
+            {(user?.role === 'farmer' || user?.role === 'agronomist' || user?.role === 'admin') && (
+              <>
+                <div className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>Home</div>
+                {user?.role === 'farmer' && <div className={`nav-item ${activeTab === 'soil-test' ? 'active' : ''}`} onClick={() => setActiveTab('soil-test')}>Soil Test</div>}
+                <div className={`nav-item ${activeTab === 'monitoring' ? 'active' : ''}`} onClick={() => setActiveTab('monitoring')}>Monitoring</div>
+                <div className={`nav-item ${activeTab === 'crop-status' ? 'active' : ''}`} onClick={() => setActiveTab('crop-status')}>Crop Status</div>
+                <div className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>Settings</div>
+              </>
+            )}
           </div>
         </nav>
 
         <div className="scrollable-content">
-          {activeTab === 'test-soil' ? (
-          <>
-            {/* Header */}
-            <header className="page-header pro-header animate-2">
+          {isAuthenticated && (
+            <header className="page-header pro-header animate-2" style={{ marginBottom: '1.5rem' }}>
               <div className="header-left">
-                <h1 className="welcome-text">Diagnostic Laboratory <span className="pro-badge">ACTIVE</span></h1>
-                <div className="date-text"><Activity size={14} color="#10b981" className="lucide-pulse" /> Precision Engine Online • {today}</div>
+                <h1 className="welcome-text">
+                  {headerInfo.title} <span className="pro-badge">{headerInfo.badge}</span>
+                </h1>
+                <div className="date-text">{headerInfo.subtext}</div>
               </div>
+              {headerActions && <div className="header-actions">{headerActions}</div>}
             </header>
+          )}
 
-            <div className="pro-welcome-banner farmer-banner animate-1">
-              <div className="banner-content">
-                <h2>Field Diagnostic</h2>
-                <p>Input your soil and environmental metrics below to generate a precision AI crop recommendation.</p>
-
-              </div>
-              <div className="banner-icon">
-                <ShieldCheck size={120} color="rgba(255,255,255,0.1)" />
-              </div>
-            </div>
-
-            {/* Widgets Area */}
-            <form onSubmit={handleSubmit} className="widgets-grid animate-3">
-              
-              {/* Weather / Environmental Widget */}
-              <div className="widget weather-widget">
-                <div className="weather-bg-circles">
-                  <div className="weather-circle" style={{width: '150px', height: '150px', top: '-20px', left: '-50px'}}></div>
-                  <div className="weather-circle" style={{width: '80px', height: '80px', bottom: '20px', right: '40px'}}></div>
-                  <div className="weather-circle" style={{width: '200px', height: '200px', bottom: '-80px', right: '-80px', opacity: 0.03}}></div>
+          {activeTab === 'soil-test' ? (
+            <SoilTest 
+              user={user}
+              params={soilTestParams}
+              setParams={setSoilTestParams}
+              setActiveTab={setActiveTab}
+              setHeaderActions={setHeaderActions}
+              setResult={setResult}
+              setToast={setToast}
+            />
+          ) : activeTab === 'crop-status' ? (
+            <Reports setHeaderActions={setHeaderActions} />
+          ) : activeTab === 'monitoring' ? (
+            <Monitoring 
+              user={user} 
+              setActiveTab={setActiveTab} 
+              setSoilTestParams={setSoilTestParams} 
+              setHeaderActions={setHeaderActions} 
+            />
+          ) : activeTab === 'settings' ? (
+            <Settings user={user} setUser={setUser} setHeaderActions={setHeaderActions} />
+          ) : (
+            <div className="dashboard-view animate-2" style={{ paddingTop: 0 }}>
+              <div className="pro-welcome-banner farmer-banner">
+                <div className="banner-content">
+                  <h2>Ready to plant?</h2>
+                  <p>Check your soil today to see which crops will grow best on your land.</p>
                 </div>
-                
-                <div className="weather-content">
-                  <div className="widget-header" style={{marginBottom: '0.75rem'}}>
-                    <span className="widget-title" style={{color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
-                      <CloudSun size={20} color="rgba(255,255,255,0.8)" />
-                      Weather
-                    </span>
-                    <button 
-                      type="button" 
-                      onClick={handleAutoFetchEnv} 
-                      className="planto-btn-secondary"
-                      disabled={envLoading || !locationActive}
-                      style={{ opacity: locationActive ? 1 : 0.5, cursor: locationActive ? 'pointer' : 'not-allowed' }}
-                    >
-                      {envLoading ? <Loader2 size={14} className="lucide-spin" style={{animation: 'spin 1s linear infinite'}}/> : <MapPin size={14}/>}
-                      {envLoading ? 'Detecting...' : 'Auto-detect'}
-                    </button>
+                <div className="banner-icon">
+                  <Sprout size={120} color="rgba(255,255,255,0.1)" />
+                </div>
+              </div>
+
+              <div className="stats-strip animate-1">
+                <div className="stat-pill-card">
+                  <div className="stat-icon-circle blue-soft"><Layers size={20} color="#3b82f6" /></div>
+                  <div className="stat-data">
+                    <span className="stat-label">My Farms</span>
+                    <span className="stat-main">{farmsCount} {farmsCount === 1 ? 'Farm' : 'Farms'}</span>
+                  </div>
+                </div>
+                <div className="stat-pill-card">
+                  <div className="stat-icon-circle green-soft"><Sprout size={20} color="#10b981" /></div>
+                  <div className="stat-data">
+                    <span className="stat-label">Crops Planted</span>
+                    <span className="stat-main">{cropsCount} {cropsCount === 1 ? 'Crop' : 'Crops'}</span>
+                  </div>
+                </div>
+                <div className="stat-pill-card">
+                  <div className="stat-icon-circle orange-soft"><AlertTriangle size={20} color="#f59e0b" /></div>
+                  <div className="stat-data">
+                    <span className="stat-label">Warnings</span>
+                    <span className="stat-main">{alerts.length === 0 ? 'No Issues' : `${alerts.length} Active`}</span>
+                  </div>
+                </div>
+                <div className="stat-pill-card">
+                  <div className="stat-icon-circle yellow-soft"><Zap size={20} color="#eab308" /></div>
+                  <div className="stat-data">
+                    <span className="stat-label">Soil Health</span>
+                    <span className="stat-main">Good</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="dashboard-grid-matching animate-3">
+                <div className="dashboard-col">
+                  {/* Weather Card */}
+                  <div className="dashboard-card matching-card glass-morph">
+                    <div className="card-header-simple"><h3><CloudSun size={20} color="var(--accent-blue)" /> Weather Today</h3></div>
+                    <div className="weather-summary" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem'}}>
+                      <div style={{textAlign: 'center'}}>
+                        <div style={{fontSize: '2.8rem', fontWeight: 800, color: 'var(--bg-sidebar)', letterSpacing: '-2px'}}>{weatherData.temp}°C</div>
+                        <div className="badge-mini-text" style={{background: 'var(--green-soft)', color: 'var(--accent-emerald)', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 800}}>{(weatherData.condition || 'Clouds').toUpperCase()}</div>
+                      </div>
+                      <div style={{display: 'flex', flexDirection: 'column', gap: '0.75rem'}}>
+                        <div className="weather-pill"><Droplets size={16} color="var(--accent-blue)" /> <div className="pill-text"><span className="pill-label">Humidity</span><span className="pill-val">{weatherData.humidity}%</span></div></div>
+                        <div className="weather-pill"><Wind size={16} color="var(--text-muted)" /> <div className="pill-text"><span className="pill-label">Wind Speed</span><span className="pill-val">{weatherData.windSpeed || '12'} km/h</span></div></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Alerts Card */}
+                  <div className="dashboard-card matching-card">
+                    <div className="card-header-simple"><h3><Bell size={20} color="var(--accent-rose)" /> Farm Warnings & Notifications</h3></div>
+                    <div className="table-wrapper-ultra-compact" style={{marginTop: '0.5rem'}}>
+                      {alerts.length > 0 ? (
+                        <table className="alerts-table-simple" style={{width: '100%', borderCollapse: 'separate', borderSpacing: '0 0.75rem'}}>
+                          <tbody>
+                            {alerts.map((alert, idx) => (
+                              <tr key={alert.id} className={`animate-${(idx % 5) + 1}`}>
+                                <td style={{background: 'rgba(0,0,0,0.02)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.02)'}}>
+                                  <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
+                                    <div className={`status-tag-mini ${alert.type}`} style={{
+                                      background: alert.type === 'critical' ? '#fee2e2' : '#fef3c7',
+                                      color: alert.type === 'critical' ? '#ef4444' : '#f59e0b',
+                                      padding: '0.25rem 0.6rem', borderRadius: '6px', fontSize: '0.65rem', fontWeight: 800
+                                    }}>
+                                      {alert.type.toUpperCase()}
+                                    </div>
+                                    <span style={{fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-dark)'}}>{alert.message}</span>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      ) : (
+                        <div className="all-operational-state" style={{
+                          display: 'flex', 
+                          flexDirection: 'column', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          padding: '2.25rem 1.5rem',
+                          background: 'var(--green-soft)',
+                          borderRadius: '16px',
+                          border: '1px dashed rgba(16, 185, 129, 0.25)',
+                          textAlign: 'center',
+                          gap: '0.75rem',
+                          transition: 'all 0.3s'
+                        }}>
+                          <div style={{
+                            width: '44px', 
+                            height: '44px', 
+                            borderRadius: '50%', 
+                            background: '#10b981', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center',
+                            color: 'white',
+                            boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
+                          }}>
+                            <CheckCircle2 size={22} />
+                          </div>
+                          <div>
+                            <h4 style={{fontSize: '0.85rem', fontWeight: 800, color: 'var(--bg-sidebar)', marginBottom: '0.2rem'}}>Status: Excellent</h4>
+                            <p style={{fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)'}}>Your farm is doing great. No issues found today.</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="dashboard-col">
+                  {/* Quick Actions */}
+                  <div className="dashboard-card matching-card" style={{background: 'var(--bg-sidebar)', color: 'white'}}>
+                    <div className="card-header-simple"><h3 style={{color: 'white'}}><Zap size={20} color="var(--accent-emerald)" /> Things You Can Do</h3></div>
+                    <div className="actions-list-simple" style={{display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem'}}>
+                      <button className="action-btn-pro" onClick={() => setActiveTab('soil-test')} style={{background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', justifyContent: 'center', padding: '1rem'}}>
+                        <FlaskConical size={18} /> Check Soil Health
+                      </button>
+                      <button className="action-btn-pro" onClick={() => setActiveTab('monitoring')} style={{background: 'var(--accent-emerald)', color: 'var(--bg-sidebar)', border: 'none', justifyContent: 'center', padding: '1rem'}}>
+                        <Activity size={18} /> View Crop Status
+                      </button>
+                    </div>
                   </div>
                   
-                  {envError && <div className="planto-alert alert-error" style={{marginBottom: '1rem'}}>{envError}</div>}
-                  
-                  <div className="input-group-grid" style={{marginTop: 'auto', position: 'relative'}}>
-                    <div>
-                      <label style={{fontSize: '0.7rem', fontWeight: 800, color: 'rgba(255,255,255,0.7)', marginBottom: '0.2rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px'}}>Temp (°C)</label>
-                      <div className="pro-input-wrapper">
-                        <div className="pro-input-icon"><ThermometerSun size={16} /></div>
-                        <input type="text" name="temperature" className="pro-input" value={formData.temperature} onChange={handleInputChange} placeholder="e.g. 24.5" />
-                      </div>
-                      {formErrors.temperature && <div style={{color: '#f87171', fontSize: '0.65rem', marginTop: '0.2rem', fontWeight: 600}}>{formErrors.temperature}</div>}
-                    </div>
+                  {/* Field Overview Map */}
+                  <div className="dashboard-card matching-card" style={{flex: 1, position: 'relative', overflow: 'hidden'}}>
+                    <div className="card-header-simple"><h3><MapPin size={20} color="var(--accent-emerald)" /> My Land Map</h3></div>
                     
-                    <div>
-                      <label style={{fontSize: '0.7rem', fontWeight: 800, color: 'rgba(255,255,255,0.7)', marginBottom: '0.2rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px'}}>Humidity (%)</label>
-                      <div className="pro-input-wrapper">
-                        <div className="pro-input-icon"><Droplets size={16} /></div>
-                        <input type="text" name="humidity" className="pro-input" value={formData.humidity} onChange={handleInputChange} placeholder="e.g. 82.0" />
+                    <div className="isometric-map-container" style={{background: 'var(--green-soft)', borderRadius: '16px', border: '1px solid rgba(16, 185, 129, 0.1)', overflow: 'hidden'}}>
+                      <div className="isometric-grid">
+                        <div className="iso-plot plot-1"></div>
+                        <div className="iso-plot plot-2"></div>
+                        <div className="iso-plot plot-3"></div>
+                        <div className="iso-plot plot-4"></div>
+                        <div className="iso-plot plot-5"></div>
+                        <div className="iso-plot plot-6"></div>
+                        {/* Droplets pins */}
+                        <div className="iso-pin pin-1"><Droplets size={12} fill="white" /></div>
+                        <div className="iso-pin pin-2"><Droplets size={12} fill="white" /></div>
+                        <div className="iso-pin pin-3"><Droplets size={12} fill="white" /></div>
                       </div>
-                      {formErrors.humidity && <div style={{color: '#f87171', fontSize: '0.65rem', marginTop: '0.2rem', fontWeight: 600}}>{formErrors.humidity}</div>}
                     </div>
-                    
-                    <div style={{gridColumn: '1 / -1'}}>
-                      <label style={{fontSize: '0.7rem', fontWeight: 800, color: 'rgba(255,255,255,0.7)', marginBottom: '0.2rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px'}}>Rainfall (mm)</label>
-                      <div className="pro-input-wrapper">
-                        <div className="pro-input-icon"><CloudRain size={16} /></div>
-                        <input type="text" name="rainfall" className="pro-input" value={formData.rainfall} onChange={handleInputChange} placeholder="e.g. 200" />
-                      </div>
-                      {formErrors.rainfall && <div style={{color: '#f87171', fontSize: '0.65rem', marginTop: '0.2rem', fontWeight: 600}}>{formErrors.rainfall}</div>}
+
+                    <div style={{marginTop: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                      <div style={{fontSize: '0.8rem', fontWeight: 600}}>Land In Use</div>
+                      <div style={{fontSize: '0.8rem', fontWeight: 800, color: 'var(--accent-emerald)'}}>82% Planted</div>
                     </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Soil Details Widget */}
-              <div className="widget growth-widget" style={{position: 'relative', overflow: 'hidden'}}>
-                <div style={{position: 'absolute', top: '-50px', right: '-50px', width: '150px', height: '150px', background: 'radial-gradient(circle, rgba(232, 236, 204, 0.5) 0%, transparent 70%)', borderRadius: '50%'}}></div>
-
-                <div className="widget-header">
-                  <span className="widget-title" style={{display: 'flex', alignItems: 'center', gap: '0.5rem', position: 'relative'}}>
-                    <FlaskConical size={20} color="var(--bg-sidebar)" />
-                    Soil Details
-                  </span>
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.7rem', fontWeight: 800, 
-                    color: 'var(--bg-sidebar)', background: 'var(--widget-light-yellow)', 
-                    padding: '0.4rem 0.8rem', borderRadius: '50px', border: '1px solid rgba(42, 67, 53, 0.1)',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.05)', position: 'relative'
-                  }}>
-                    <div style={{width: '6px', height: '6px', background: '#10b981', borderRadius: '50%', boxShadow: '0 0 6px #10b981', animation: 'pulseGlow 2s infinite'}}></div>
-                    MANUAL INPUT
-                  </div>
-                </div>
-                
-                <div className="input-group-grid" style={{marginTop: '0.2rem', position: 'relative'}}>
-                  <div>
-                    <label style={{fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '0.2rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px'}}>Nitrogen (N)</label>
-                    <div className="pro-input-wrapper">
-                      <div className="pro-input-icon"><Leaf size={16} /></div>
-                      <input type="text" name="n" className="pro-input" value={formData.n} onChange={handleInputChange} placeholder="e.g. 90" />
-                    </div>
-                    {formErrors.n && <div style={{color: '#ef4444', fontSize: '0.65rem', marginTop: '0.2rem', fontWeight: 600}}>{formErrors.n}</div>}
-                  </div>
-                  
-                  <div>
-                    <label style={{fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '0.2rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px'}}>Phosphorus (P)</label>
-                    <div className="pro-input-wrapper">
-                      <div className="pro-input-icon"><Sprout size={16} /></div>
-                      <input type="text" name="p" className="pro-input" value={formData.p} onChange={handleInputChange} placeholder="e.g. 42" />
-                    </div>
-                    {formErrors.p && <div style={{color: '#ef4444', fontSize: '0.65rem', marginTop: '0.2rem', fontWeight: 600}}>{formErrors.p}</div>}
-                  </div>
-
-                  <div>
-                    <label style={{fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '0.2rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px'}}>Potassium (K)</label>
-                    <div className="pro-input-wrapper">
-                      <div className="pro-input-icon"><Droplets size={16} /></div>
-                      <input type="text" name="k" className="pro-input" value={formData.k} onChange={handleInputChange} placeholder="e.g. 43" />
-                    </div>
-                    {formErrors.k && <div style={{color: '#ef4444', fontSize: '0.65rem', marginTop: '0.2rem', fontWeight: 600}}>{formErrors.k}</div>}
-                  </div>
-
-                  <div>
-                    <label style={{fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '0.2rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px'}}>Soil pH</label>
-                    <div className="pro-input-wrapper">
-                      <div className="pro-input-icon"><FlaskConical size={16} /></div>
-                      <input type="text" name="ph" className="pro-input" value={formData.ph} onChange={handleInputChange} placeholder="e.g. 6.5" />
-                    </div>
-                    {formErrors.ph && <div style={{color: '#ef4444', fontSize: '0.65rem', marginTop: '0.2rem', fontWeight: 600}}>{formErrors.ph}</div>}
-                  </div>
-                </div>
-
-                {currentAlerts.length > 0 && (
-                  <div style={{display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: 'auto', paddingTop: '0.5rem', position: 'relative'}}>
-                    {currentAlerts.map((alert, idx) => (
-                      <div key={idx} className="planto-alert alert-warning" style={{boxShadow: '0 2px 6px rgba(180,83,9,0.1)'}}>
-                        <AlertTriangle size={12} /> {alert}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="execute-row animate-3" style={{gridColumn: '1 / -1', marginTop: '1rem'}}>
-                <button type="submit" className="action-btn-pro" style={{width: '100%', justifyContent: 'center'}} disabled={loading}>
-                  {loading ? <Loader2 size={18} className="lucide-spin" /> : <Sprout size={18} />}
-                  {loading ? 'Analyzing Soil...' : 'Run Analysis Now'}
-                </button>
-                {error && <div className="planto-alert alert-error" style={{marginTop: '1rem'}}>{error}</div>}
-              </div>
-            </form>
-          </>
-
-        ) : activeTab === 'analytics' ? (
-          <Analytics />
-        ) : activeTab === 'reports' ? (
-          <Reports />
-        ) : activeTab === 'settings' ? (
-          <Settings user={user} setUser={setUser} />
-        ) : (
-          <div className="dashboard-view animate-2">
-            <header className="page-header pro-header">
-              <div className="header-left">
-                <h1 className="welcome-text">My Farm Dashboard <span className="pro-badge">PRO-FARMER</span></h1>
-                <div className="date-text"><Activity size={14} color="var(--accent-emerald)" className="lucide-pulse" /> Global Link Secured • {today}</div>
-              </div>
-            </header>
-            
-            <div className="pro-welcome-banner farmer-banner">
-              <div className="banner-content">
-                <h2>Ready to plant?</h2>
-                <p>Test your soil today to see which crop will grow best on your land.</p>
-                <button className="banner-btn farmer-btn-large" onClick={() => setActiveTab('test-soil')}>Start Soil Test Now</button>
-              </div>
-              <div className="banner-icon">
-                <Sprout size={120} color="rgba(255,255,255,0.1)" />
-              </div>
-            </div>
-
-            {/* Top Stats Row - Matching Image */}
-            <div className="stats-strip animate-1">
-              <div className="stat-pill-card">
-                <div className="stat-icon-circle green-soft"><Droplets size={20} color="#10b981" /></div>
-                <div className="stat-data">
-                  <span className="stat-label">Soil</span>
-                  <span className="stat-main">23 %</span>
-                </div>
-              </div>
-              <div className="stat-pill-card">
-                <div className="stat-icon-circle orange-soft"><ThermometerSun size={20} color="#f59e0b" /></div>
-                <div className="stat-data">
-                  <span className="stat-label">Temperature</span>
-                  <span className="stat-main">18,7°C</span>
-                </div>
-              </div>
-              <div className="stat-pill-card">
-                <div className="stat-icon-circle emerald-soft"><Leaf size={20} color="#059669" /></div>
-                <div className="stat-data">
-                  <span className="stat-label">Crop Health</span>
-                  <span className="stat-main">Good</span>
-                </div>
-              </div>
-              <div className="stat-pill-card">
-                <div className="stat-icon-circle yellow-soft"><Zap size={20} color="#eab308" /></div>
-                <div className="stat-data">
-                  <span className="stat-label">Energy</span>
-                  <span className="stat-main">45 %</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="dashboard-grid-matching">
-              {/* Left Column */}
-              <div className="dashboard-col">
-                {/* Moisture Over Time */}
-                <div className="dashboard-card matching-card animate-2">
-                  <div className="card-header-simple">
-                    <h3>Moisture Over Time</h3>
-                  </div>
-                  <div className="chart-placeholder-wavy">
-                    <svg viewBox="0 0 400 120" className="wavy-line-svg">
-                      <path 
-                        d="M0,60 Q25,40 50,60 T100,60 T150,60 T200,80 T250,60 T300,50 T350,40 T400,30" 
-                        fill="none" 
-                        stroke="#10b981" 
-                        strokeWidth="3"
-                        strokeLinecap="round"
-                      />
-                      <line x1="0" y1="30" x2="400" y2="30" stroke="rgba(0,0,0,0.03)" />
-                      <line x1="0" y1="60" x2="400" y2="60" stroke="rgba(0,0,0,0.03)" />
-                      <line x1="0" y1="90" x2="400" y2="90" stroke="rgba(0,0,0,0.03)" />
-                    </svg>
-                  </div>
-                </div>
-
-                {/* Alerts Table */}
-                <div className="dashboard-card matching-card animate-3">
-                  <div className="card-header-simple">
-                    <h3>Alerts</h3>
-                  </div>
-                  <table className="alerts-table-simple">
-                    <thead>
-                      <tr>
-                        <th>Date</th>
-                        <th>Description</th>
-                        <th>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td>10 Apr</td>
-                        <td>Low Soil Moisture</td>
-                        <td><span className="status-tag critical">Critical</span></td>
-                      </tr>
-                      <tr>
-                        <td>08 Apr</td>
-                        <td>High Temperature</td>
-                        <td><span className="status-tag warning">Warning</span></td>
-                      </tr>
-                      <tr>
-                        <td>02 Apr</td>
-                        <td>Low Soil Moisture</td>
-                        <td><span className="status-tag warning">Warning</span></td>
-                      </tr>
-                      <tr>
-                        <td>28 Dec</td>
-                        <td>Device Disconnec</td>
-                        <td><span className="status-tag disabled">Disabled</span></td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Right Column */}
-              <div className="dashboard-col">
-                {/* Field Overview (Isometric) */}
-                <div className="dashboard-card matching-card animate-2">
-                  <div className="card-header-simple">
-                    <h3>Field Overview</h3>
-                  </div>
-                  <div className="isometric-map-container">
-                    <div className="isometric-grid">
-                      <div className="iso-plot plot-1"></div>
-                      <div className="iso-plot plot-2"></div>
-                      <div className="iso-plot plot-3"></div>
-                      <div className="iso-plot plot-4"></div>
-                      <div className="iso-plot plot-5"></div>
-                      <div className="iso-plot plot-6"></div>
-                      {/* Pins */}
-                      <div className="iso-pin pin-1"><Droplets size={12} fill="white" /></div>
-                      <div className="iso-pin pin-2"><Droplets size={12} fill="white" /></div>
-                      <div className="iso-pin pin-3"><Droplets size={12} fill="white" /></div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="quick-actions-row">
-                  <div className="dashboard-card matching-card flex-1 animate-3">
-                    <div className="card-header-simple">
-                      <h3>Quick Actions</h3>
-                    </div>
-                    <div className="actions-list-simple">
-                      <button className="action-btn-simple">Start Irrigation Cycle</button>
-                      <button className="action-btn-simple">Schedule Report Export</button>
-                    </div>
-                  </div>
-                  <div className="dashboard-card matching-card flex-1 animate-3">
-                    <div className="card-header-simple">
-                      <h3>Quick Actions</h3>
-                    </div>
-                    <div className="isometric-mini">
-                       <div className="iso-plot-mini"></div>
-                       <div className="iso-plot-mini active"></div>
+                    <div style={{width: '100%', height: '6px', background: 'rgba(0,0,0,0.05)', borderRadius: '10px', marginTop: '0.5rem'}}>
+                      <div style={{width: '82%', height: '100%', background: 'var(--accent-emerald)', borderRadius: '10px', boxShadow: '0 0 10px rgba(16, 185, 129, 0.3)'}}></div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
         </div>
       </main>
 
@@ -618,7 +683,18 @@ function App() {
             </button>
             <button className="icon-btn"><Search size={20} /></button>
             <button className="icon-btn"><MessageSquare size={20} /></button>
-            <button className="icon-btn"><Bell size={20} /></button>
+            <button className="icon-btn" style={{ position: 'relative' }}>
+              <Bell size={20} />
+              {unreadAlertsCount > 0 && (
+                <span style={{ 
+                  position: 'absolute', top: -5, right: -5, background: '#ef4444', 
+                  color: 'white', borderRadius: '50%', width: 15, height: 15, 
+                  fontSize: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center' 
+                }}>
+                  {unreadAlertsCount}
+                </span>
+              )}
+            </button>
             <button className="icon-btn" onClick={handleLogout} title="Log Out"><LogOut size={20} /></button>
             <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop" alt="Profile" className="profile-avatar" />
           </div>
@@ -632,25 +708,25 @@ function App() {
                 </svg>
                 <div className="meter-content">
                   <div className="meter-val">--</div>
-                  <div className="meter-label">HEALTH</div>
+                  <div className="meter-label">SOIL HEALTH</div>
                 </div>
               </div>
               <div style={{marginTop: '1.5rem'}}>
                 <div className="sidebar-title" style={{color: 'white', textAlign: 'center'}}>Welcome, {user?.full_name?.split(' ')[0] || 'Farmer'}</div>
-                <div style={{fontSize: '0.85rem', opacity: 0.8, textAlign: 'center'}}>Please check your soil to see your full harvest plan.</div>
+                <div style={{fontSize: '0.85rem', opacity: 0.8, textAlign: 'center'}}>Please test your soil to see which crop is best to plant.</div>
               </div>
             </div>
           ) : (
             <div className="report-section">
-              <h2 className="sidebar-title">Soil Results</h2>
-              <p className="sidebar-subtitle">Here is what our AI found in your soil today.</p>
+              <h2 className="sidebar-title">Your Soil Report</h2>
+              <p className="sidebar-subtitle">Here are the results found by our AI today.</p>
               
               <div className="result-crop-card">
                 <div className="crop-icon-wrapper">
                   <Leaf size={24} />
                 </div>
                 <div className="crop-details">
-                  <div className="crop-label">Optimal Crop</div>
+                  <div className="crop-label">Best Crop to Plant</div>
                   <div className="crop-name">{result.crop}</div>
                 </div>
                 <div className="confidence-badge">
@@ -658,7 +734,7 @@ function App() {
                 </div>
               </div>
 
-              <h3 style={{fontFamily: 'var(--font-heading)', fontSize: '1.1rem', marginBottom: '1rem'}}>What to do next</h3>
+              <h3 style={{fontFamily: 'var(--font-heading)', fontSize: '1.1rem', marginBottom: '1rem'}}>Steps to Take Next</h3>
               
               <div style={{overflowY: 'auto', paddingRight: '0.5rem', marginBottom: '4rem'}}>
                 {(typeof result.advice === 'string' ? result.advice.split('. ') : result.advice).map((step, i) => {
@@ -675,6 +751,37 @@ function App() {
                     </div>
                   );
                 })}
+              </div>
+
+              <div style={{
+                position: 'absolute', bottom: '0', left: '0', right: '0', 
+                padding: '1.5rem', background: 'linear-gradient(to top, var(--bg-sidebar) 85%, transparent)',
+                borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+                display: 'flex', flexDirection: 'column', gap: '0.75rem',
+                zIndex: 10
+              }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'rgba(255, 255, 255, 0.7)', textAlign: 'center' }}>
+                  Plant this recommended crop on your farm?
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button 
+                    className="action-btn-pro" 
+                    style={{ flex: 1, justifyContent: 'center', background: 'var(--accent-emerald)', color: 'var(--bg-sidebar)', padding: '0.6rem 0.5rem', fontSize: '0.8rem' }}
+                    onClick={handlePlantCrop}
+                    disabled={loading}
+                  >
+                    {loading ? <Loader2 size={14} className="lucide-spin" style={{ animation: 'spin 1s linear infinite' }} /> : <Sprout size={14} />}
+                    Accept & Plant
+                  </button>
+                  <button 
+                    className="action-btn-pro" 
+                    style={{ flex: 1, justifyContent: 'center', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#fca5a5', padding: '0.6rem 0.5rem', fontSize: '0.8rem' }}
+                    onClick={handleDeclineCrop}
+                    disabled={loading}
+                  >
+                    Decline
+                  </button>
+                </div>
               </div>
 
             </div>
@@ -711,7 +818,6 @@ function App() {
           box-shadow: 0 10px 25px rgba(0,0,0,0.1);
           animation: slideUp 0.3s ease-out forwards;
           z-index: 1000;
-          font-weight: 600;
           font-size: 0.9rem;
         }
 

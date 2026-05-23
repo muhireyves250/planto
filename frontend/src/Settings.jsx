@@ -17,8 +17,9 @@ import {
   ChevronRight,
   Fingerprint
 } from 'lucide-react';
+import FarmManagement from './pages/FarmManagement';
 
-const Settings = ({ user, setUser }) => {
+const Settings = ({ user, setUser, setHeaderActions }) => {
   const [saving, setSaving] = useState(false);
   const [activeSection, setActiveSection] = useState('profile');
   const [settingsData, setSettingsData] = useState({
@@ -36,7 +37,7 @@ const Settings = ({ user, setUser }) => {
 
   useEffect(() => {
     if (user?.id) {
-      fetch(`http://127.0.0.1:8000/settings/${user.id}`)
+      fetch(`http://127.0.0.1:8080/settings/${user.id}`)
         .then(res => res.json())
         .then(data => {
           setSettingsData({
@@ -68,7 +69,7 @@ const Settings = ({ user, setUser }) => {
     if (!user?.id) return;
     setSaving(true);
     try {
-      const res = await fetch(`http://127.0.0.1:8000/settings/${user.id}`, {
+      const res = await fetch(`http://127.0.0.1:8080/settings/${user.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settingsData)
@@ -85,28 +86,27 @@ const Settings = ({ user, setUser }) => {
     }
   };
 
+  useEffect(() => {
+    if (setHeaderActions) {
+      setHeaderActions(
+        <button onClick={handleSave} className="action-btn-pro" style={{gap: '0.5rem', padding: '0.5rem 1.25rem', fontSize: '0.85rem'}}>
+          {saving ? <div className="lucide-spin" style={{width: '16px', height: '16px', border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%'}}></div> : <Save size={16} />}
+          {saving ? 'Saving...' : 'Save Changes'}
+        </button>
+      );
+    }
+  }, [saving, settingsData, user, setHeaderActions]);
+
   const sections = [
-    { id: 'profile', label: 'Profile', icon: User },
-    { id: 'farm', label: 'Farm Config', icon: MapPin },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
+    { id: 'profile', label: 'Profile Settings', icon: User },
     { id: 'security', label: 'Security', icon: Shield },
-    { id: 'system', label: 'System', icon: Cpu }
+    { id: 'notifications', label: 'Notifications', icon: Bell },
+    { id: 'preferences', label: 'Preferences', icon: Globe },
+    { id: 'farm', label: 'Manage My Farms', icon: MapPin }
   ];
 
   return (
-    <div className="analytics-container animate-2" style={{paddingTop: '0.5rem'}}>
-      <header className="page-header pro-header" style={{marginBottom: '1rem'}}>
-        <div className="header-left">
-          <h1 className="welcome-text" style={{fontSize: '1.4rem'}}>System Settings <span className="pro-badge" style={{padding: '0.1rem 0.4rem', fontSize: '0.6rem'}}>PRO-FARMER</span></h1>
-          <div className="date-text" style={{fontSize: '0.75rem'}}><SettingsIcon size={12} color="var(--accent-emerald)" /> Platform Configuration</div>
-        </div>
-        <div className="header-right">
-           <button onClick={handleSave} className="action-btn-pro" style={{gap: '0.5rem', padding: '0.5rem 1.25rem', fontSize: '0.85rem'}}>
-             {saving ? <div className="lucide-spin" style={{width: '16px', height: '16px', border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%'}}></div> : <Save size={16} />}
-             {saving ? 'Saving...' : 'Save Changes'}
-           </button>
-        </div>
-      </header>
+    <div className="dashboard-view animate-2" style={{ paddingTop: 0 }}>
 
       {/* Settings Welcome Banner - Matching Dashboard Template */}
       <div className="pro-welcome-banner farmer-banner animate-1" style={{padding: '1.5rem 2rem', marginBottom: '1.5rem'}}>
@@ -194,38 +194,8 @@ const Settings = ({ user, setUser }) => {
             )}
 
             {activeSection === 'farm' && (
-              <div className="settings-content-area animate-fade-in">
-                <div className="content-header" style={{marginBottom: '1.5rem'}}>
-                  <h3 style={{fontSize: '1.2rem'}}>Farm Configuration</h3>
-                  <p style={{fontSize: '0.8rem'}}>Define your land characteristics for more accurate AI predictions.</p>
-                </div>
-                
-                <div className="settings-form-grid" style={{gap: '1.25rem'}}>
-                  <div className="form-group">
-                    <label style={{fontSize: '0.65rem'}}>Default Soil Type</label>
-                    <select name="default_soil_type" className="pro-input" value={settingsData.default_soil_type} onChange={handleInputChange} style={{paddingLeft: '0.75rem', fontSize: '0.85rem', height: '36px'}}>
-                      <option value="Loamy">Loamy</option>
-                      <option value="Silt">Silt</option>
-                      <option value="Clay">Clay</option>
-                      <option value="Sandy">Sandy</option>
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label style={{fontSize: '0.65rem'}}>Irrigation System</label>
-                    <select name="irrigation_system" className="pro-input" value={settingsData.irrigation_system} onChange={handleInputChange} style={{paddingLeft: '0.75rem', fontSize: '0.85rem', height: '36px'}}>
-                      <option value="Drip Irrigation">Drip Irrigation</option>
-                      <option value="Sprinkler">Sprinkler</option>
-                      <option value="Surface Irrigation">Surface Irrigation</option>
-                    </select>
-                  </div>
-                  <div className="form-group full-width">
-                    <label style={{fontSize: '0.65rem'}}>Farm Location (Coordinates)</label>
-                    <div className="pro-input-wrapper">
-                      <div className="pro-input-icon"><MapPin size={14} /></div>
-                      <input type="text" name="farm_location" className="pro-input" value={settingsData.farm_location} onChange={handleInputChange} placeholder="e.g. 34.0522° N, 118.2437° W" style={{fontSize: '0.85rem', padding: '0.5rem 0.5rem 0.5rem 2.2rem'}} />
-                    </div>
-                  </div>
-                </div>
+              <div className="settings-content-area animate-fade-in" style={{ padding: 0 }}>
+                <FarmManagement user={user} />
               </div>
             )}
 

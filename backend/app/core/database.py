@@ -1,14 +1,11 @@
-import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
+from app.core.config import settings
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://neondb_owner:npg_JDZW9M4tvnbh@ep-dry-base-ankwllos-pooler.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require")
-
-# PostgreSQL engine
 engine = create_engine(
-    DATABASE_URL,
+    settings.DATABASE_URL,
     pool_pre_ping=True,
-    connect_args={"sslmode": "require"}
+    connect_args={"sslmode": "require"} if "neon.tech" in settings.DATABASE_URL else {}
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

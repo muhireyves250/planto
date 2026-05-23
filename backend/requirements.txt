@@ -8,3 +8,8 @@ uvicorn
 pydantic
 sqlalchemy
 psycopg2-binary
+python-jose[cryptography]
+passlib[bcrypt]
+python-dotenv
+requests
+email-validator
