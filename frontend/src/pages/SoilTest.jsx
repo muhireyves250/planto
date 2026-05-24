@@ -20,7 +20,7 @@ import { weatherApi } from '../api/farmApi';
 import { monitoringApi } from '../api/monitoringApi';
 import SoilTestResult from './SoilTestResult';
 
-const API_URL = 'http://127.0.0.1:8080/predict';
+const API_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/predict` : 'http://127.0.0.1:8080/predict';
 
 const calculateGuestIntelligence = (cropName, inputValues) => {
   const targets = {

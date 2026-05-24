@@ -12,8 +12,8 @@ const FarmStatusCards = ({ latestHealth }) => {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem' }}>
       {/* Card 1: Growth Stage */}
-      <div style={{ background: 'white', padding: '1.25rem', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '1rem', transition: 'all 0.2s' }}>
-        <div style={{ width: '40px', height: '40px', background: '#ecfdf5', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+      <div style={{ padding: '1.25rem', borderRadius: '12px', background: 'var(--green-soft)', border: '1px solid rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div style={{ width: '40px', height: '40px', background: 'white', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
           <Sprout size={20} color="#10b981" />
         </div>
         <div>
@@ -24,8 +24,8 @@ const FarmStatusCards = ({ latestHealth }) => {
       </div>
 
       {/* Card 3: Risk (Overall Health) */}
-      <div style={{ background: 'white', padding: '1.25rem', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '1rem', transition: 'all 0.2s' }}>
-        <div style={{ width: '40px', height: '40px', background: hasRisk ? '#fef2f2' : '#f0fdf4', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+      <div style={{ padding: '1.25rem', borderRadius: '12px', background: hasRisk ? '#fef2f2' : '#f0fdf4', border: hasRisk ? '1px solid #fecaca' : '1px solid #dcfce7', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div style={{ width: '40px', height: '40px', background: 'white', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
           {hasRisk ? <AlertTriangle size={20} color="#ef4444" /> : <ShieldCheck size={20} color="#10b981" />}
         </div>
         <div>

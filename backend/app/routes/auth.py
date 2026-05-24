@@ -60,11 +60,18 @@ async def login(user: auth_schemas.UserLogin, db: Session = Depends(get_db)):
             detail=f"This account is registered as a {db_user.role}. Please select the correct role."
         )
     
+    # GENERATE OTP
     otp = str(random.randint(100000, 999999))
-    otp_store[user.email] = otp
-    send_otp_email(user.email, otp)
+    otp_store[db_user.email] = otp
     
-    return {"success": True, "requires_otp": True, "message": "OTP sent to your email"}
+    # SEND OTP
+    send_otp_email(db_user.email, otp)
+    
+    return {
+        "success": True, 
+        "requires_otp": True,
+        "email": db_user.email
+    }
 
 @router.post("/verify-otp")
 async def verify_otp(data: dict, db: Session = Depends(get_db)):

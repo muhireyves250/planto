@@ -22,8 +22,9 @@ const AuthPage = ({ onLogin, onBack }) => {
     onSuccess: async (tokenResponse) => {
       setIsLoading(true);
       setError(null);
+      const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080';
       try {
-        const res = await fetch('http://127.0.0.1:8080/auth/google', {
+        const res = await fetch(`${BASE_URL}/auth/google`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ token: tokenResponse.access_token, role }),
@@ -54,7 +55,8 @@ const AuthPage = ({ onLogin, onBack }) => {
     setIsLoading(true);
 
     try {
-      const endpoint = isLogin ? 'http://127.0.0.1:8080/login' : 'http://127.0.0.1:8080/register';
+      const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080';
+      const endpoint = isLogin ? `${BASE_URL}/login` : `${BASE_URL}/register`;
       const body = isLogin
         ? { email, password, role }
         : { email, password, full_name: name, role };
@@ -75,7 +77,10 @@ const AuthPage = ({ onLogin, onBack }) => {
         setShowOTP(true);
         setSuccessMsg("Please check your email for the verification code.");
       } else {
-        onLogin(data.user);
+        onLogin({
+          access_token: data.access_token,
+          ...data.user
+        });
       }
     } catch (err) {
       console.error('Auth Error:', err);
@@ -90,7 +95,8 @@ const AuthPage = ({ onLogin, onBack }) => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch('http://127.0.0.1:8080/verify-otp', {
+      const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080';
+      const response = await fetch(`${BASE_URL}/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, otp })
@@ -118,7 +124,8 @@ const AuthPage = ({ onLogin, onBack }) => {
     setError(null);
     setSuccessMsg(null);
     try {
-      const response = await fetch('http://127.0.0.1:8080/forgot-password', {
+      const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080';
+      const response = await fetch(`${BASE_URL}/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
@@ -141,7 +148,8 @@ const AuthPage = ({ onLogin, onBack }) => {
     setError(null);
     setSuccessMsg(null);
     try {
-      const response = await fetch('http://127.0.0.1:8080/reset-password', {
+      const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080';
+      const response = await fetch(`${BASE_URL}/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, otp, new_password: newPassword })

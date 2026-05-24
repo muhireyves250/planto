@@ -37,7 +37,8 @@ const Settings = ({ user, setUser, setHeaderActions }) => {
 
   useEffect(() => {
     if (user?.id) {
-      fetch(`http://127.0.0.1:8080/settings/${user.id}`)
+      const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080';
+      fetch(`${BASE_URL}/settings/${user.id}`)
         .then(res => res.json())
         .then(data => {
           setSettingsData({
@@ -69,7 +70,8 @@ const Settings = ({ user, setUser, setHeaderActions }) => {
     if (!user?.id) return;
     setSaving(true);
     try {
-      const res = await fetch(`http://127.0.0.1:8080/settings/${user.id}`, {
+      const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080';
+      const res = await fetch(`${BASE_URL}/settings/${user.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settingsData)
