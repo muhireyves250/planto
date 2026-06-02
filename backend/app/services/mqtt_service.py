@@ -23,12 +23,15 @@ def _random_soil():
     }
 
 _latest_reading = None
+_sensor_vibrating = False
 _lock = threading.Lock()
 
 
 def get_latest_reading():
     with _lock:
-        return _latest_reading
+        if _latest_reading is None:
+            return None
+        return {**_latest_reading, "active": _sensor_vibrating}
 
 
 def _on_connect(client, userdata, flags, rc):
@@ -40,7 +43,7 @@ def _on_connect(client, userdata, flags, rc):
 
 
 def _on_message(client, userdata, msg):
-    global _latest_reading
+    global _latest_reading, _sensor_vibrating
     payload = msg.payload.decode("utf-8").strip()
     print(f"[MQTT] Received: {payload}")
 
@@ -55,11 +58,12 @@ def _on_message(client, userdata, msg):
 
         with _lock:
             _latest_reading = {**_random_soil(), "temperature": temp, "humidity": humidity}
+            _sensor_vibrating = True
         print(f"[MQTT] Sensor active — reading stored: {_latest_reading}")
     else:
         with _lock:
-            _latest_reading = None
-        print("[MQTT] Sensor idle — reading cleared")
+            _sensor_vibrating = False
+        print("[MQTT] Sensor idle — keeping last reading")
 
 
 def start_mqtt_client():

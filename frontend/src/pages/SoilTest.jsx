@@ -139,7 +139,7 @@ const SoilTest = ({
       try {
         const result = await sensorApi.getLatest();
         if (result.data) {
-          setSensorActive(true);
+          setSensorActive(result.data.active === true);
           setFormData(prev => ({
             ...prev,
             n: String(result.data.n),
