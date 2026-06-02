@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 import random
-import requests
+import httpx
 from uuid import UUID
 import smtplib
 from email.mime.text import MIMEText
@@ -121,8 +121,9 @@ async def google_auth(data: dict, db: Session = Depends(get_db)):
         )
     
     try:
-        response = requests.get(f"https://www.googleapis.com/oauth2/v3/userinfo?access_token={token}")
-        if not response.ok:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"https://www.googleapis.com/oauth2/v3/userinfo?access_token={token}")
+        if not response.is_success:
             raise HTTPException(status_code=401, detail="Invalid Google token")
         
         user_info = response.json()
