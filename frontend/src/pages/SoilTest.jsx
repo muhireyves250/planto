@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { weatherApi } from '../api/farmApi';
 import { monitoringApi } from '../api/monitoringApi';
+import { sensorApi } from '../api/sensorApi';
 import SoilTestResult from './SoilTestResult';
 
 const API_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/predict` : 'http://127.0.0.1:8080/predict';
@@ -124,6 +125,7 @@ const SoilTest = ({
   });
 
   const [formErrors, setFormErrors] = useState({});
+  const [sensorActive, setSensorActive] = useState(false);
 
   useEffect(() => {
     // Clear custom header actions
@@ -131,6 +133,35 @@ const SoilTest = ({
       setHeaderActions(null);
     }
   }, [setHeaderActions]);
+
+  useEffect(() => {
+    const poll = async () => {
+      try {
+        const result = await sensorApi.getLatest();
+        if (result.data) {
+          setSensorActive(true);
+          setFormData(prev => ({
+            ...prev,
+            n: String(result.data.n),
+            p: String(result.data.p),
+            k: String(result.data.k),
+            ph: String(result.data.ph),
+            moisture: String(result.data.moisture),
+            temperature: String(result.data.temperature),
+            humidity: String(result.data.humidity)
+          }));
+        } else {
+          setSensorActive(false);
+        }
+      } catch {
+        setSensorActive(false);
+      }
+    };
+
+    poll();
+    const interval = setInterval(poll, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -456,13 +487,28 @@ const SoilTest = ({
                   <FlaskConical size={20} color="var(--bg-sidebar)" />
                   Soil Information
                 </span>
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.7rem', fontWeight: 800, 
-                  color: 'var(--bg-sidebar)', background: 'var(--widget-light-yellow)', 
-                  padding: '0.4rem 0.8rem', borderRadius: '50px', border: '1px solid rgba(42, 67, 53, 0.1)'
-                }}>
-                  <div style={{ width: '6px', height: '6px', background: '#10b981', borderRadius: '50%', boxShadow: '0 0 6px #10b981' }}></div>
-                  TYPE IN DETAILS
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{
+                    display: 'flex', alignItems: 'center', gap: '0.4rem',
+                    fontSize: '0.7rem', fontWeight: 800,
+                    color: sensorActive ? '#16a34a' : '#94a3b8'
+                  }}>
+                    <span style={{
+                      width: 7, height: 7, borderRadius: '50%',
+                      background: sensorActive ? '#16a34a' : '#94a3b8',
+                      display: 'inline-block',
+                      boxShadow: sensorActive ? '0 0 6px #16a34a' : 'none'
+                    }} />
+                    {sensorActive ? 'SENSOR ACTIVE' : 'NO SIGNAL'}
+                  </span>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.7rem', fontWeight: 800,
+                    color: 'var(--bg-sidebar)', background: 'var(--widget-light-yellow)',
+                    padding: '0.4rem 0.8rem', borderRadius: '50px', border: '1px solid rgba(42, 67, 53, 0.1)'
+                  }}>
+                    <div style={{ width: '6px', height: '6px', background: '#10b981', borderRadius: '50%', boxShadow: '0 0 6px #10b981' }}></div>
+                    TYPE IN DETAILS
+                  </div>
                 </div>
               </div>
               
