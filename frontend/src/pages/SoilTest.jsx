@@ -148,7 +148,8 @@ const SoilTest = ({
             ph: String(result.data.ph),
             moisture: String(result.data.moisture),
             temperature: String(result.data.temperature),
-            humidity: String(result.data.humidity)
+            humidity: String(result.data.humidity),
+            rainfall: String(result.data.rainfall)
           }));
         } else {
           setSensorActive(false);

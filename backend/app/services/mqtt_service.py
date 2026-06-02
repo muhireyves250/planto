@@ -1,4 +1,5 @@
 import threading
+import random
 import paho.mqtt.client as mqtt
 from app.services.weather.weather_service import weather_service
 
@@ -11,7 +12,15 @@ MQTT_PASS = "Tw26~wh$Q"
 WEATHER_LAT = -1.94
 WEATHER_LNG = 29.87
 
-PRESET_SOIL = {"n": 40.0, "p": 30.0, "k": 20.0, "ph": 6.5, "moisture": 45.0}
+def _random_soil():
+    return {
+        "n":        round(random.uniform(10, 140), 1),
+        "p":        round(random.uniform(5, 145), 1),
+        "k":        round(random.uniform(5, 205), 1),
+        "ph":       round(random.uniform(5.5, 8.0), 1),
+        "moisture": round(random.uniform(10, 90), 1),
+        "rainfall": round(random.uniform(20, 300), 1),
+    }
 
 _latest_reading = None
 _lock = threading.Lock()
@@ -45,7 +54,7 @@ def _on_message(client, userdata, msg):
             humidity = 65.0
 
         with _lock:
-            _latest_reading = {**PRESET_SOIL, "temperature": temp, "humidity": humidity}
+            _latest_reading = {**_random_soil(), "temperature": temp, "humidity": humidity}
         print(f"[MQTT] Sensor active — reading stored: {_latest_reading}")
     else:
         with _lock:
