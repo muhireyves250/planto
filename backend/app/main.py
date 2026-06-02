@@ -2,7 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import engine, Base
-from app.routes import auth, prediction, monitoring, fertilizer, farm, weather, alert
+from app.routes import auth, prediction, monitoring, fertilizer, farm, weather, alert, sensor
+from app.services.mqtt_service import start_mqtt_client
 
 # Initialize Database Tables
 Base.metadata.create_all(bind=engine)
@@ -22,6 +23,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.on_event("startup")
+async def startup_event():
+    start_mqtt_client()
+
 # Include Routers
 app.include_router(auth.router)
 app.include_router(prediction.router)
@@ -30,6 +35,7 @@ app.include_router(fertilizer.router)
 app.include_router(farm.router)
 app.include_router(weather.router)
 app.include_router(alert.router)
+app.include_router(sensor.router)
 
 @app.get("/")
 async def root():

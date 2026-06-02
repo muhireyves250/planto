@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Droplets, ThermometerSun, FlaskConical, Leaf, Sprout, Send, Loader2, Activity, Waves } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Droplets, ThermometerSun, FlaskConical, Leaf, Sprout, Send, Loader2, Activity, Waves, Wind } from 'lucide-react';
+import { sensorApi } from '../../api/sensorApi';
 
 const MonitoringForm = ({ onSubmit, loading }) => {
   const [formData, setFormData] = useState({
@@ -7,8 +8,39 @@ const MonitoringForm = ({ onSubmit, loading }) => {
     p: '',
     k: '',
     ph: '',
-    moisture: ''
+    moisture: '',
+    temperature: '',
+    humidity: ''
   });
+  const [sensorActive, setSensorActive] = useState(false);
+
+  useEffect(() => {
+    const poll = async () => {
+      try {
+        const result = await sensorApi.getLatest();
+        if (result.data) {
+          setSensorActive(true);
+          setFormData({
+            n: String(result.data.n),
+            p: String(result.data.p),
+            k: String(result.data.k),
+            ph: String(result.data.ph),
+            moisture: String(result.data.moisture),
+            temperature: String(result.data.temperature),
+            humidity: String(result.data.humidity)
+          });
+        } else {
+          setSensorActive(false);
+        }
+      } catch {
+        setSensorActive(false);
+      }
+    };
+
+    poll();
+    const interval = setInterval(poll, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -27,8 +59,20 @@ const MonitoringForm = ({ onSubmit, loading }) => {
             <Activity size={20} color="var(--bg-sidebar)" />
             Update Soil Health
           </span>
+          <span style={{
+            display: 'flex', alignItems: 'center', gap: '0.4rem',
+            fontSize: '0.75rem', fontWeight: 600,
+            color: sensorActive ? '#16a34a' : '#94a3b8'
+          }}>
+            <span style={{
+              width: 8, height: 8, borderRadius: '50%',
+              background: sensorActive ? '#16a34a' : '#94a3b8',
+              display: 'inline-block'
+            }} />
+            {sensorActive ? 'Sensor Active' : 'No Signal'}
+          </span>
         </div>
-        
+
         <div className="input-group-grid" style={{marginTop: '1.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem'}}>
           <div className="pro-input-group">
             <label className="pro-label">NITROGEN (N)</label>
@@ -63,6 +107,20 @@ const MonitoringForm = ({ onSubmit, loading }) => {
             <div className="pro-input-wrapper">
               <div className="pro-input-icon"><Waves size={16} /></div>
               <input type="number" name="moisture" className="pro-input" value={formData.moisture} onChange={handleChange} required />
+            </div>
+          </div>
+          <div className="pro-input-group">
+            <label className="pro-label">TEMPERATURE (°C)</label>
+            <div className="pro-input-wrapper">
+              <div className="pro-input-icon"><ThermometerSun size={16} /></div>
+              <input type="number" step="0.1" name="temperature" className="pro-input" value={formData.temperature} onChange={handleChange} />
+            </div>
+          </div>
+          <div className="pro-input-group">
+            <label className="pro-label">HUMIDITY (%)</label>
+            <div className="pro-input-wrapper">
+              <div className="pro-input-icon"><Wind size={16} /></div>
+              <input type="number" step="0.1" name="humidity" className="pro-input" value={formData.humidity} onChange={handleChange} />
             </div>
           </div>
         </div>
