@@ -13,3 +13,4 @@ passlib[bcrypt]
 python-dotenv
 requests
 email-validator
+paho-mqtt
