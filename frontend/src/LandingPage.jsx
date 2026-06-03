@@ -508,9 +508,9 @@ const LandingPage = ({ onLogin }) => {
               
               <div className="team-member">
                 <div className="member-image-wrapper">
-                  <img src="/florice.jpeg" alt="Florice MUSAFIRI" className="member-img" />
+                  <img src="/florice.jpeg" alt="Robert HAKUZIMANA" className="member-img" />
                 </div>
-                <h3 className="member-name">Florice MUSAFIRI</h3>
+                <h3 className="member-name">Robert HAKUZIMANA</h3>
                 <p className="member-role">AI Developer</p>
               </div>
             </div>
