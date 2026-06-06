@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
-import Analytics from './Analytics';
-import Reports from './Reports';
-import Settings from './Settings';
+import React, { useState, lazy, Suspense } from 'react';
 import LandingPage from './LandingPage';
 import AuthPage from './AuthPage';
-import Monitoring from './pages/Monitoring';
-import SoilTest from './pages/SoilTest';
-import FarmManagement from './pages/FarmManagement';
+
+const Analytics = lazy(() => import('./Analytics'));
+const Reports = lazy(() => import('./Reports'));
+const Settings = lazy(() => import('./Settings'));
+const Monitoring = lazy(() => import('./pages/Monitoring'));
+const SoilTest = lazy(() => import('./pages/SoilTest'));
+const FarmManagement = lazy(() => import('./pages/FarmManagement'));
 import { monitoringApi } from './api/monitoringApi';
 import { farmApi, weatherApi, alertApi } from './api/farmApi';
 import { 
@@ -481,8 +482,32 @@ function App() {
             </header>
           )}
 
+          <Suspense fallback={
+            <div className="dashboard-view animate-2" style={{ paddingTop: 0 }}>
+              <div className="stats-strip">
+                {[1,2,3,4].map(i => (
+                  <div key={i} className="stat-pill-card skeleton-card skeleton-shimmer">
+                    <div className="skeleton-circle"></div>
+                    <div className="skeleton-data">
+                      <div className="skeleton-line-sm"></div>
+                      <div className="skeleton-line-lg"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="dashboard-grid-matching">
+                <div className="dashboard-col">
+                  <div className="dashboard-card matching-card skeleton-card skeleton-shimmer" style={{height:'220px'}}></div>
+                  <div className="dashboard-card matching-card skeleton-card skeleton-shimmer" style={{height:'160px'}}></div>
+                </div>
+                <div className="dashboard-col">
+                  <div className="dashboard-card matching-card skeleton-card skeleton-shimmer" style={{height:'400px'}}></div>
+                </div>
+              </div>
+            </div>
+          }>
           {activeTab === 'soil-test' ? (
-            <SoilTest 
+            <SoilTest
               user={user}
               params={soilTestParams}
               setParams={setSoilTestParams}
@@ -494,11 +519,11 @@ function App() {
           ) : activeTab === 'crop-status' ? (
             <Reports setHeaderActions={setHeaderActions} />
           ) : activeTab === 'monitoring' ? (
-            <Monitoring 
-              user={user} 
-              setActiveTab={setActiveTab} 
-              setSoilTestParams={setSoilTestParams} 
-              setHeaderActions={setHeaderActions} 
+            <Monitoring
+              user={user}
+              setActiveTab={setActiveTab}
+              setSoilTestParams={setSoilTestParams}
+              setHeaderActions={setHeaderActions}
             />
           ) : activeTab === 'settings' ? (
             <Settings user={user} setUser={setUser} setHeaderActions={setHeaderActions} />
@@ -669,6 +694,7 @@ function App() {
               </div>
             </div>
           )}
+          </Suspense>
         </div>
       </main>
 
