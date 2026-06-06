@@ -108,7 +108,7 @@ const Settings = ({ user, setUser, setHeaderActions }) => {
   ];
 
   return (
-    <div className="dashboard-view animate-2" style={{ paddingTop: 0 }}>
+    <div className="dashboard-view animate-2 settings-page" style={{ paddingTop: 0 }}>
 
       {/* Settings Welcome Banner - Matching Dashboard Template */}
       <div className="pro-welcome-banner farmer-banner animate-1" style={{padding: '1.5rem 2rem', marginBottom: '1.5rem'}}>
