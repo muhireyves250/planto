@@ -26,6 +26,8 @@ import {
   Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tooltip
 } from 'recharts';
 
+import { getCached, setCached } from './api/cache';
+
 const ANALYTICS_URL = `${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080'}/predictions`;
 
 const Reports = ({ setHeaderActions }) => {
@@ -35,6 +37,11 @@ const Reports = ({ setHeaderActions }) => {
 
   useEffect(() => {
     const fetchData = async () => {
+      const cached = getCached('predictions');
+      if (cached) {
+        setData(cached);
+        setLoading(false);
+      }
       try {
         const user = JSON.parse(localStorage.getItem('planto_user'));
         const response = await fetch(ANALYTICS_URL, {
@@ -43,8 +50,8 @@ const Reports = ({ setHeaderActions }) => {
           }
         });
         const json = await response.json();
-        // Sort by timestamp descending
         const sorted = (json || []).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        setCached('predictions', sorted);
         setData(sorted);
       } catch (err) {
         console.error(err);

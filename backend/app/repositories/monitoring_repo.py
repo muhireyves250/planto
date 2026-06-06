@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, selectinload
 from uuid import UUID
 from app.models.planted_crop import PlantedCrop
 from app.models.soil_monitoring import SoilMonitoring
@@ -15,9 +15,9 @@ def get_planted_crops_by_user(db: Session, user_id: UUID):
     return (
         db.query(PlantedCrop)
         .options(
-            joinedload(PlantedCrop.monitoring_data),
-            joinedload(PlantedCrop.health_history),
-            joinedload(PlantedCrop.fertilizer_plans),
+            selectinload(PlantedCrop.monitoring_data),
+            selectinload(PlantedCrop.health_history),
+            selectinload(PlantedCrop.fertilizer_plans),
         )
         .filter(PlantedCrop.user_id == user_id)
         .all()
@@ -27,9 +27,9 @@ def get_all_planted_crops(db: Session):
     return (
         db.query(PlantedCrop)
         .options(
-            joinedload(PlantedCrop.monitoring_data),
-            joinedload(PlantedCrop.health_history),
-            joinedload(PlantedCrop.fertilizer_plans),
+            selectinload(PlantedCrop.monitoring_data),
+            selectinload(PlantedCrop.health_history),
+            selectinload(PlantedCrop.fertilizer_plans),
         )
         .all()
     )

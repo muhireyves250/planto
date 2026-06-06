@@ -60,8 +60,8 @@ async def predict(
 
 @router.get("/predictions", response_model=List[pred_schemas.PredictionDB])
 async def read_predictions(
-    skip: int = 0, 
-    limit: int = 100, 
+    skip: int = 0,
+    limit: int = 20,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):

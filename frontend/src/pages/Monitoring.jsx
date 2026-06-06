@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Loader2, AlertTriangle, Sprout, Activity, FlaskConical, TrendingUp, Zap, Clock, Bell, CheckCircle2, MapPin, Droplets, Wind } from 'lucide-react';
 import { monitoringApi } from '../api/monitoringApi';
 import { alertApi } from '../api/farmApi';
+import { getCached, setCached } from '../api/cache';
 
 import CropHeroCard from '../components/monitoring/CropHeroCard';
 import FarmStatusCards from '../components/monitoring/FarmStatusCards';
@@ -21,8 +22,21 @@ const Monitoring = ({ user, setActiveTab, setSoilTestParams, setHeaderActions })
 
   const loadData = async () => {
     try {
-      setLoading(true);
       setError(null);
+      const cacheKey = `monitoring_${user?.id}`;
+
+      const cached = user?.id ? getCached(cacheKey) : null;
+      if (cached) {
+        setPlantedCrops(cached.crops);
+        setAlerts(cached.alerts);
+        setSelectedCrop(prev => {
+          if (prev) return cached.crops.find(c => c.id === prev.id) || cached.crops[0] || null;
+          return cached.crops[0] || null;
+        });
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
 
       let cropsData = [];
       let alertsData = [];
@@ -32,6 +46,7 @@ const Monitoring = ({ user, setActiveTab, setSoilTestParams, setHeaderActions })
           monitoringApi.getMyCrops(user.id),
           alertApi.getAlerts()
         ]);
+        setCached(cacheKey, { crops: cropsData, alerts: alertsData });
       } else {
         cropsData = JSON.parse(localStorage.getItem('planto_guest_crops')) || [];
       }

@@ -11,7 +11,7 @@ router = APIRouter(prefix="/alerts", tags=["Alerts & Notifications"])
 
 @router.get("/", response_model=List[dict])
 async def list_my_alerts(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    alerts = db.query(Alert).filter(Alert.user_id == current_user.id).order_by(Alert.created_at.desc()).all()
+    alerts = db.query(Alert).filter(Alert.user_id == current_user.id).order_by(Alert.created_at.desc()).limit(20).all()
     return [
         {
             "id": str(a.id),
