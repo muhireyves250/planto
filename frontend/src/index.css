@@ -5,9 +5,9 @@
     --font-body: 'Inter', sans-serif;
     
     /* Planto Ultra-Pro Palette */
-    --bg-outer: #f8faf9; 
-    --bg-main: #ffffff;
-    --bg-sidebar: #1e362a; /* Even deeper forest green */
+    --bg-outer: #f5ebd7; /* Increased warmth */
+    --bg-main: #fff1e0;  /* Deeper amber-cream */
+    --bg-sidebar: #1e362a; 
     --bg-sidebar-light: #2d4f3e; 
     
     /* Premium Accents */
@@ -20,7 +20,7 @@
     --widget-green: #2a4536;
     --widget-light-yellow: #fdfaf0;
     --widget-light-green: #f2f5e8;
-    --widget-white: #ffffff;
+    --widget-white: #fff1e0;
     
     /* Text Colors */
     --text-dark: #0f1714;
@@ -40,7 +40,7 @@
     --radius-md: 12px;
     
     /* Pro-Material Glassmorphism */
-    --glass-bg: rgba(255, 255, 255, 0.75);
+    --glass-bg: rgba(255, 241, 224, 0.75);
     --glass-border: rgba(255, 255, 255, 0.4);
     --glass-shadow: 0 12px 40px rgba(0, 0, 0, 0.04);
     
@@ -57,7 +57,7 @@
 
 body {
     font-family: var(--font-body);
-    background: var(--bg-outer);
+    background: #f8fafc; /* Original neutral background */
     background-image: radial-gradient(circle at 100% 50%, rgba(42, 69, 54, 0.03) 0%, transparent 40%);
     color: var(--text-dark);
     display: flex;
@@ -669,20 +669,22 @@ body {
 .stat-pill-card {
     background: white;
     flex: 1;
-    padding: 1.5rem;
-    border-radius: var(--radius-xl);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.02);
-    border: 1px solid rgba(0,0,0,0.03);
+    padding: 1.25rem 1.75rem;
+    border-radius: var(--radius-2xl);
+    box-shadow: 0 15px 30px rgba(16, 185, 129, 0.12);
+    border: 1px solid var(--accent-emerald);
     display: flex;
     align-items: center;
-    gap: 1.25rem;
-    transition: var(--transition-pro);
+    gap: 1.5rem;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    overflow: hidden;
+    transform: translateY(-5px);
 }
 
 .stat-pill-card:hover {
     transform: translateY(-8px);
-    box-shadow: 0 20px 40px rgba(0,0,0,0.05);
-    border-color: rgba(16, 185, 129, 0.2);
+    box-shadow: 0 20px 40px rgba(16, 185, 129, 0.18);
 }
 
 .stat-icon-circle {
@@ -693,11 +695,10 @@ body {
     align-items: center;
     justify-content: center;
     transition: var(--transition-fast);
+    box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.4), 0 4px 8px rgba(0, 0, 0, 0.05);
 }
 
-.stat-pill-card:hover .stat-icon-circle {
-    transform: rotate(10deg) scale(1.1);
-}
+/* Removed inverted hover text colors to keep it simple */
 
 .blue-soft { background: #eff6ff; }
 .green-soft { background: #f0fdf4; }
@@ -719,9 +720,11 @@ body {
 
 .stat-main {
     font-family: var(--font-heading);
-    font-size: 1.3rem;
+    font-size: 1.5rem;
     font-weight: 800;
     color: var(--bg-sidebar);
+    letter-spacing: -0.5px;
+    line-height: 1.2;
 }
 
 .dashboard-grid-matching {
@@ -737,17 +740,18 @@ body {
 }
 
 .matching-card {
-    background: white;
+    background: rgba(255, 255, 255, 0.95);
     border-radius: var(--radius-2xl);
     padding: 2rem;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.02);
-    border: 1px solid rgba(0,0,0,0.03);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--accent-emerald); /* Matching the pro style */
     transition: var(--transition-pro);
 }
 
 .matching-card:hover {
-    box-shadow: 0 30px 60px rgba(0,0,0,0.06);
-    border-color: rgba(16, 185, 129, 0.2);
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15);
+    transform: translateY(-4px);
+    background: white;
 }
 
 .card-header-simple h3 {
@@ -786,7 +790,7 @@ body {
 }
 
 .weather-pill {
-    background: white;
+    background: var(--bg-main);
     padding: 0.6rem 1.2rem;
     border-radius: var(--radius-full);
     display: flex;
@@ -918,7 +922,7 @@ body {
 }
 
 .stat-card-pro {
-    background: white;
+    background: var(--bg-main);
     padding: 1.25rem;
     border-radius: var(--radius-xl);
     display: flex;
@@ -1030,7 +1034,7 @@ body {
 }
 
 .tab-btn.active {
-    background: white;
+    background: var(--bg-main);
     color: var(--bg-sidebar);
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
@@ -1192,7 +1196,7 @@ body {
     padding: 0.5rem;
     border-radius: 8px;
     border: 1px solid rgba(0,0,0,0.05);
-    background: white;
+    background: var(--bg-main);
     font-size: 0.7rem;
     font-weight: 700;
     cursor: pointer;
@@ -1328,7 +1332,7 @@ body {
 }
 
 .stat-card {
-    background: white;
+    background: var(--bg-main);
     padding: 1.5rem;
     border-radius: var(--radius-xl);
     display: flex;
@@ -1374,7 +1378,7 @@ body {
 }
 
 .analytics-card {
-    background: white;
+    background: var(--bg-main);
     padding: 1.5rem;
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow-card);
@@ -1823,7 +1827,7 @@ body {
 
 .task-item:hover {
     transform: translateX(5px);
-    background: white;
+    background: var(--bg-main);
     box-shadow: var(--shadow-soft);
     border-color: rgba(16, 185, 129, 0.1);
 }
@@ -1949,7 +1953,7 @@ body {
 }
 
 .stat-pill-card {
-    background: white;
+    background: var(--bg-main);
     padding: 0.85rem 1.25rem;
     border-radius: var(--radius-lg);
     display: flex;
@@ -2013,7 +2017,7 @@ body {
 }
 
 .matching-card {
-    background: white;
+    background: var(--bg-main);
     padding: 1.25rem !important;
     border: 1px solid rgba(0,0,0,0.04);
     box-shadow: 0 5px 20px rgba(0,0,0,0.01);
@@ -2109,7 +2113,7 @@ body {
     position: absolute;
     width: 24px;
     height: 24px;
-    background: white;
+    background: var(--bg-main);
     border-radius: 50% 50% 50% 0;
     transform: rotate(-45deg) translateZ(10px);
     display: flex;
@@ -2217,7 +2221,7 @@ body {
 
 .input-with-icon:focus-within {
     border-color: var(--accent-emerald);
-    background: white;
+    background: var(--bg-main);
     box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
 }
 
@@ -2234,7 +2238,7 @@ body {
 .detect-btn-simple {
     width: 100%;
     height: 100%;
-    background: white;
+    background: var(--bg-main);
     border: 1px dashed #cbd5e1;
     border-radius: var(--radius-md);
     display: flex;
