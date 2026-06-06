@@ -1,11 +1,19 @@
 import React from 'react';
 import { Sprout, AlertTriangle, ShieldCheck } from 'lucide-react';
 
-const FarmStatusCards = ({ latestHealth }) => {
-  const stage = latestHealth?.stage || 'Germination';
+const stageFromDays = (days) => {
+  if (days <= 14) return 'Germination';
+  if (days <= 45) return 'Vegetative';
+  if (days <= 90) return 'Flowering';
+  return 'Maturity';
+};
+
+const FarmStatusCards = ({ latestHealth, cropAge }) => {
+  const stage = latestHealth?.stage || stageFromDays(cropAge ?? 0);
   let stageText = 'Seed establishment stage';
   if (stage.toLowerCase().includes('vegetative')) stageText = 'Active leaf and stem growth';
   if (stage.toLowerCase().includes('flowering')) stageText = 'Crop is producing flowers';
+  if (stage.toLowerCase().includes('maturity')) stageText = 'Crop approaching harvest';
 
   const hasRisk = latestHealth?.health_score < 75;
 

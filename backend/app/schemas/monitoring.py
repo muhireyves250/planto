@@ -11,6 +11,7 @@ class MonitoringCreate(BaseModel):
     moisture: float
     temperature: Optional[float] = None
     humidity: Optional[float] = None
+    growth_stage: Optional[str] = None  # farmer-chosen phase override
 
 class MonitoringDB(MonitoringCreate):
     id: UUID

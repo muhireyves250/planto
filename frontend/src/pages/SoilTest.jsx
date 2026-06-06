@@ -260,7 +260,8 @@ const SoilTest = ({
           p: parseFloat(formData.p),
           k: parseFloat(formData.k),
           ph: parseFloat(formData.ph),
-          moisture: parseFloat(formData.moisture)
+          moisture: parseFloat(formData.moisture),
+          ...(params.growthStage ? { growth_stage: params.growthStage } : {})
         };
 
         let res;

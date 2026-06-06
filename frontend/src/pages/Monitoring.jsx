@@ -123,9 +123,9 @@ const Monitoring = ({ user, setActiveTab, setSoilTestParams, setHeaderActions })
     }
   };
 
-  const handleCheckSoilAgain = () => {
+  const handleCheckSoilAgain = (phase) => {
     if (!selectedCrop) return;
-    if (setSoilTestParams) setSoilTestParams({ mode: 'monitoring', plantId: selectedCrop.id, cropName: selectedCrop.crop_name });
+    if (setSoilTestParams) setSoilTestParams({ mode: 'monitoring', plantId: selectedCrop.id, cropName: selectedCrop.crop_name, growthStage: phase });
     setActiveTab('soil-test');
   };
 
@@ -381,14 +381,14 @@ const Monitoring = ({ user, setActiveTab, setSoilTestParams, setHeaderActions })
           <div className="dashboard-card matching-card">
             <div className="card-header-simple"><h3><Sprout size={20} color="var(--accent-emerald)" /> Phase Analysis</h3></div>
             <div style={{ marginTop: '0.5rem' }}>
-              <FarmStatusCards latestHealth={latestHealth} />
+              <FarmStatusCards latestHealth={latestHealth} cropAge={cropAge} />
             </div>
           </div>
 
           {/* Recommendations & Fertilizer */}
           <RecommendedActions latestPlan={latestPlan} latestSoil={latestSoil} alerts={alerts} />
           <FertilizerPlanGrid latestPlan={latestPlan} />
-          <SoilRetestCTA onRetest={handleCheckSoilAgain} />
+          <SoilRetestCTA onRetest={handleCheckSoilAgain} cropAge={cropAge} />
         </div>
       </div>
     );

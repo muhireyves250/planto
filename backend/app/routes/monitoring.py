@@ -48,8 +48,8 @@ async def add_monitoring(plant_id: UUID, data: mon_schemas.MonitoringCreate, db:
     new_entry = monitoring_repo.create_monitoring_entry(db=db, plant_id=plant_id, data=data, user_id=current_user.id)
     
     # 3. Calculate Intelligence
-    # Stage
-    stage = growth_stage_engine.determine_growth_stage(db_plant.planting_date)
+    # Stage — use farmer-chosen phase if provided, otherwise calculate from planting date
+    stage = data.growth_stage if data.growth_stage else growth_stage_engine.determine_growth_stage(db_plant.planting_date)
     
     # Requirements & Deficits
     targets = nutrient_engine.get_target_requirements(db_plant.crop_name)
