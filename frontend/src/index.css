@@ -743,22 +743,14 @@ body {
 }
 
 .matching-card {
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.95);
     border-radius: var(--radius-2xl);
     padding: 2rem;
-    box-shadow: 0 15px 30px rgba(16, 185, 129, 0.12);
-    border: 1px solid var(--accent-emerald);
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--accent-emerald); /* Matching the pro style */
+    transition: var(--transition-pro);
 }
 
-.matching-card:hover {
-    background: rgba(255, 255, 255, 0.7) !important;
-    border-color: #059669 !important;
-    box-shadow: none !important;
-    transform: translateY(-8px) !important;
-}
 
 .card-header-simple h3 {
     font-family: var(--font-heading);
@@ -1950,12 +1942,6 @@ body {
     border-color: rgba(16, 185, 129, 0.2) !important;
 }
 
-.matching-card:hover {
-    background: rgba(255, 255, 255, 0.7) !important;
-    transform: translateY(-8px) !important;
-    box-shadow: none !important;
-    border-color: #059669 !important;
-}
 
 /* --- Matching Image Design System --- */
 .stats-strip {
@@ -2041,18 +2027,29 @@ body {
 }
 
 .matching-card {
-    background: rgba(255, 255, 255, 0.7) !important;
+    background: rgba(255, 255, 255, 0.7);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    padding: 1.25rem !important;
-    border: 1px solid var(--accent-emerald) !important;
-    box-shadow: 0 15px 30px rgba(16, 185, 129, 0.12) !important;
-    border-radius: var(--radius-lg) !important;
+    padding: 1.25rem;
+    border: 1px solid var(--accent-emerald);
+    box-shadow: 0 15px 30px rgba(16, 185, 129, 0.12);
+    border-radius: var(--radius-lg);
     transform: translateY(-5px);
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.matching-card:hover {
+    background: rgba(255, 255, 255, 0.7);
+    border-color: #059669;
+    box-shadow: none;
+    transform: translateY(-8px);
+}
+
+/* Weather card — reference, never override */
 .glass-morph.matching-card {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     border: 1px solid var(--accent-emerald);
     box-shadow: 0 15px 30px rgba(16, 185, 129, 0.12);
     transform: translateY(-5px);
@@ -2060,10 +2057,10 @@ body {
 }
 
 .glass-morph.matching-card:hover {
-    background: rgba(255, 255, 255, 0.7) !important;
-    border-color: #059669 !important;
-    box-shadow: none !important;
-    transform: translateY(-8px) !important;
+    background: rgba(255, 255, 255, 0.7);
+    border-color: #059669;
+    box-shadow: none;
+    transform: translateY(-8px);
 }
 
 .card-header-simple h3 {
