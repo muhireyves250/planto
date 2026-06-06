@@ -199,6 +199,8 @@ const SoilTest = ({
 
     if (isMonitoring) {
       checkNumber(formData.moisture, 'moisture', 0, 100);
+      checkNumber(formData.temperature, 'temperature', -10, 60);
+      checkNumber(formData.humidity, 'humidity', 0, 100);
     } else {
       checkNumber(formData.temperature, 'temperature', -10, 60);
       checkNumber(formData.humidity, 'humidity', 0, 100);
@@ -261,6 +263,8 @@ const SoilTest = ({
           k: parseFloat(formData.k),
           ph: parseFloat(formData.ph),
           moisture: parseFloat(formData.moisture),
+          temperature: parseFloat(formData.temperature),
+          humidity: parseFloat(formData.humidity),
           ...(params.growthStage ? { growth_stage: params.growthStage } : {})
         };
 
@@ -585,14 +589,32 @@ const SoilTest = ({
                 </div>
 
                 {isMonitoring && (
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '0.2rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Soil Moisture (%)</label>
-                    <div className="pro-input-wrapper">
-                      <div className="pro-input-icon"><Droplets size={16} /></div>
-                      <input type="text" name="moisture" className="pro-input" value={formData.moisture} onChange={handleInputChange} placeholder="e.g. 72" />
+                  <>
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '0.2rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Soil Moisture (%)</label>
+                      <div className="pro-input-wrapper">
+                        <div className="pro-input-icon"><Droplets size={16} /></div>
+                        <input type="text" name="moisture" className="pro-input" value={formData.moisture} onChange={handleInputChange} placeholder="e.g. 72" />
+                      </div>
+                      {formErrors.moisture && <div style={{ color: '#ef4444', fontSize: '0.65rem', marginTop: '0.2rem', fontWeight: 600 }}>{formErrors.moisture}</div>}
                     </div>
-                    {formErrors.moisture && <div style={{ color: '#ef4444', fontSize: '0.65rem', marginTop: '0.2rem', fontWeight: 600 }}>{formErrors.moisture}</div>}
-                  </div>
+                    <div>
+                      <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '0.2rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Temperature (°C)</label>
+                      <div className="pro-input-wrapper">
+                        <div className="pro-input-icon"><ThermometerSun size={16} /></div>
+                        <input type="text" name="temperature" className="pro-input" value={formData.temperature} onChange={handleInputChange} placeholder="e.g. 24.5" />
+                      </div>
+                      {formErrors.temperature && <div style={{ color: '#ef4444', fontSize: '0.65rem', marginTop: '0.2rem', fontWeight: 600 }}>{formErrors.temperature}</div>}
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '0.2rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Humidity (%)</label>
+                      <div className="pro-input-wrapper">
+                        <div className="pro-input-icon"><Droplets size={16} /></div>
+                        <input type="text" name="humidity" className="pro-input" value={formData.humidity} onChange={handleInputChange} placeholder="e.g. 65" />
+                      </div>
+                      {formErrors.humidity && <div style={{ color: '#ef4444', fontSize: '0.65rem', marginTop: '0.2rem', fontWeight: 600 }}>{formErrors.humidity}</div>}
+                    </div>
+                  </>
                 )}
               </div>
             </div>
