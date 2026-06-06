@@ -1,4 +1,5 @@
 import React, { useState, lazy, Suspense } from 'react';
+import { useNavigate, useLocation, Routes, Route, Navigate } from 'react-router-dom';
 import LandingPage from './LandingPage';
 import AuthPage from './AuthPage';
 
@@ -81,9 +82,14 @@ function App() {
     }
   });
   
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const activeTab = location.pathname === '/' ? 'dashboard' : location.pathname.replace('/', '');
+  const setActiveTab = (tab) => navigate(tab === 'dashboard' ? '/' : `/${tab}`);
+
   const [showAuth, setShowAuth] = useState(false);
   const [headerActions, setHeaderActions] = useState(null);
-  const [activeTab, setActiveTab] = useState('dashboard');
   const [soilTestParams, setSoilTestParams] = useState({ mode: 'prediction', plantId: null, cropName: '' });
   const [weatherData, setWeatherData] = useState({ temp: '24', condition: 'Sunny', humidity: '62' });
   const [formData, setFormData] = useState({
@@ -507,28 +513,29 @@ function App() {
               </div>
             </div>
           }>
-          {activeTab === 'soil-test' ? (
-            <SoilTest
-              user={user}
-              params={soilTestParams}
-              setParams={setSoilTestParams}
-              setActiveTab={setActiveTab}
-              setHeaderActions={setHeaderActions}
-              setResult={setResult}
-              setToast={setToast}
-            />
-          ) : activeTab === 'crop-status' ? (
-            <Reports setHeaderActions={setHeaderActions} />
-          ) : activeTab === 'monitoring' ? (
-            <Monitoring
-              user={user}
-              setActiveTab={setActiveTab}
-              setSoilTestParams={setSoilTestParams}
-              setHeaderActions={setHeaderActions}
-            />
-          ) : activeTab === 'settings' ? (
-            <Settings user={user} setUser={setUser} setHeaderActions={setHeaderActions} />
-          ) : (
+          <Routes>
+            <Route path="/soil-test" element={
+              <SoilTest
+                user={user}
+                params={soilTestParams}
+                setParams={setSoilTestParams}
+                setActiveTab={setActiveTab}
+                setHeaderActions={setHeaderActions}
+                setResult={setResult}
+                setToast={setToast}
+              />
+            } />
+            <Route path="/crop-status" element={<Reports setHeaderActions={setHeaderActions} />} />
+            <Route path="/monitoring" element={
+              <Monitoring
+                user={user}
+                setActiveTab={setActiveTab}
+                setSoilTestParams={setSoilTestParams}
+                setHeaderActions={setHeaderActions}
+              />
+            } />
+            <Route path="/settings" element={<Settings user={user} setUser={setUser} setHeaderActions={setHeaderActions} />} />
+            <Route path="/" element={(
             <div className="dashboard-view animate-2" style={{ paddingTop: 0 }}>
               <div className="pro-welcome-banner farmer-banner">
                 <div className="banner-content">
@@ -694,7 +701,9 @@ function App() {
                 </div>
               </div>
             </div>
-          )}
+          )} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
           </Suspense>
         </div>
       </main>
