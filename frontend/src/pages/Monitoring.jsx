@@ -377,19 +377,6 @@ const Monitoring = ({ user, setActiveTab, setSoilTestParams, setHeaderActions })
         </div>
 
         <div className="dashboard-col">
-          {/* Actions card — identical dark style to home page "Things You Can Do" */}
-          <div className="dashboard-card matching-card" style={{ background: 'var(--bg-sidebar)', color: 'white' }}>
-            <div className="card-header-simple"><h3 style={{ color: 'white' }}><Zap size={20} color="var(--accent-emerald)" /> Things You Can Do</h3></div>
-            <div className="actions-list-simple" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
-              <button className="action-btn-pro" onClick={handleCheckSoilAgain} style={{ background: 'var(--accent-emerald)', color: 'var(--bg-sidebar)', border: 'none', justifyContent: 'center', padding: '1rem' }}>
-                <FlaskConical size={18} /> Re-test Soil Health
-              </button>
-              <button className="action-btn-pro" onClick={() => setActiveTab('crop-status')} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', justifyContent: 'center', padding: '1rem' }}>
-                <Activity size={18} /> View Growth Journey
-              </button>
-            </div>
-          </div>
-
           {/* Farm Status */}
           <div className="dashboard-card matching-card">
             <div className="card-header-simple"><h3><Sprout size={20} color="var(--accent-emerald)" /> Phase Analysis</h3></div>
