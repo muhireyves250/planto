@@ -84,38 +84,6 @@ const Reports = ({ setHeaderActions }) => {
     }
   }, [searchTerm, data, loading, setHeaderActions]);
 
-  if (loading) return (
-    <div className="dashboard-view animate-2" style={{ paddingTop: 0 }}>
-      
-      <div className="stats-strip">
-        {[1,2,3,4].map(i => (
-          <div key={i} className="stat-pill-card skeleton-card skeleton-shimmer">
-            <div className="skeleton-circle"></div>
-            <div className="skeleton-data">
-              <div className="skeleton-line-sm"></div>
-              <div className="skeleton-line-lg"></div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="dashboard-grid-matching">
-        <div className="dashboard-col">
-          <div className="dashboard-card matching-card skeleton-card skeleton-shimmer" style={{height: '240px'}}></div>
-          <div className="dashboard-card matching-card skeleton-card skeleton-shimmer" style={{height: '150px'}}></div>
-        </div>
-        <div className="dashboard-col">
-          <div className="dashboard-card matching-card skeleton-card skeleton-shimmer flex-1">
-            <div className="skeleton-table-header"></div>
-            {[1,2,3,4,5,6,7,8].map(i => (
-              <div key={i} className="skeleton-table-row"></div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
   const filteredData = data.filter(item => 
     item.predicted_crop.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -174,8 +142,8 @@ const Reports = ({ setHeaderActions }) => {
       </div>
 
       {loading ? (
-        <div className="dashboard-view animate-2" style={{padding: 0}}>
-          <div className="stats-strip" style={{marginTop: '1.5rem'}}>
+        <>
+          <div className="stats-strip animate-1">
             {[1,2,3,4].map(i => (
               <div key={i} className="stat-pill-card skeleton-card skeleton-shimmer">
                 <div className="skeleton-circle"></div>
@@ -186,7 +154,6 @@ const Reports = ({ setHeaderActions }) => {
               </div>
             ))}
           </div>
-
           <div className="dashboard-grid-matching">
             <div className="dashboard-col">
               <div className="dashboard-card matching-card skeleton-card skeleton-shimmer" style={{height: '240px'}}></div>
@@ -201,7 +168,7 @@ const Reports = ({ setHeaderActions }) => {
               </div>
             </div>
           </div>
-        </div>
+        </>
       ) : (
         <>
           {/* Summary Pills - Matching Analytics/My Crops */}
