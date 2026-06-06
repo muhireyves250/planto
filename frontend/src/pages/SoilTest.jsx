@@ -482,7 +482,7 @@ const SoilTest = ({
             )}
 
             {/* Soil Details Widget */}
-            <div className="widget growth-widget" style={{ position: 'relative', overflow: 'hidden', gridColumn: isMonitoring ? '1 / -1' : 'span 1' }}>
+            <div className="widget growth-widget dashboard-card matching-card" style={{ position: 'relative', overflow: 'hidden', gridColumn: isMonitoring ? '1 / -1' : 'span 1' }}>
               <div className="widget-header">
                 <span className="widget-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', position: 'relative' }}>
                   <FlaskConical size={20} color="var(--bg-sidebar)" />
