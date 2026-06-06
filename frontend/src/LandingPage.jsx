@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Leaf, 
   ChevronDown, 
@@ -24,8 +24,42 @@ import {
 } from 'lucide-react';
 import './LandingPage.css';
 
+const NAV_SECTIONS = [
+  { id: 'home', label: 'Home' },
+  { id: 'about', label: 'About Us' },
+  { id: 'features', label: 'Products' },
+  { id: 'testimonials', label: 'Resources' },
+  { id: 'cta', label: 'Pricing' },
+];
+
+const scrollTo = (id) => {
+  const el = document.getElementById(id);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
 const LandingPage = ({ onLogin }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState('home');
+  const observerRef = useRef(null);
+
+  useEffect(() => {
+    const sections = NAV_SECTIONS.map(s => document.getElementById(s.id)).filter(Boolean);
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) setActiveSection(entry.target.id);
+        });
+      },
+      { threshold: 0.3 }
+    );
+    sections.forEach(s => observerRef.current.observe(s));
+    return () => observerRef.current?.disconnect();
+  }, []);
+
+  const handleNav = (id) => {
+    setIsMobileMenuOpen(false);
+    scrollTo(id);
+  };
 
   return (
     <div className="agrinova-landing">
@@ -40,12 +74,16 @@ const LandingPage = ({ onLogin }) => {
         </button>
 
         <div className={`landing-links ${isMobileMenuOpen ? 'mobile-active' : ''}`}>
-          <a href="#home" className="active" onClick={() => setIsMobileMenuOpen(false)}>Home</a>
-          <a href="#about" onClick={() => setIsMobileMenuOpen(false)}>About Us</a>
-          <a href="#features" className="dropdown" onClick={() => setIsMobileMenuOpen(false)}>Products <ChevronDown size={14} /></a>
-          <a href="#testimonials" className="dropdown" onClick={() => setIsMobileMenuOpen(false)}>Resources <ChevronDown size={14} /></a>
-          <a href="#cta" onClick={() => setIsMobileMenuOpen(false)}>Pricing</a>
-          
+          {NAV_SECTIONS.map(({ id, label }) => (
+            <a
+              key={id}
+              className={activeSection === id ? 'active' : ''}
+              onClick={() => handleNav(id)}
+              style={{ cursor: 'pointer' }}
+            >
+              {label}
+            </a>
+          ))}
           <div className="landing-auth mobile-only">
             <button className="btn-outline" onClick={onLogin}>Log in</button>
             <button className="btn-primary" onClick={onLogin}>Sign up</button>
@@ -82,7 +120,7 @@ const LandingPage = ({ onLogin }) => {
           
           <div className="hero-cta">
             <button className="btn-primary btn-large" onClick={onLogin}>Start Farming Smarter <ArrowRight size={16} /></button>
-            <button className="btn-white btn-large">How It Works <LayoutDashboard size={16} /></button>
+            <button className="btn-white btn-large" onClick={() => scrollTo('how-it-works')}>How It Works <LayoutDashboard size={16} /></button>
           </div>
         </div>
 
@@ -160,7 +198,7 @@ const LandingPage = ({ onLogin }) => {
               </div>
               
               <div className="col-footer-right">
-                <a href="#" className="link-learn">
+                <a href="#!" onClick={e => e.preventDefault()} className="link-learn">
                   Learn more <Activity size={14} className="icon-link" />
                 </a>
               </div>
@@ -281,7 +319,7 @@ const LandingPage = ({ onLogin }) => {
                   crop success rates based on live environmental data, helping you plan your harvest with 
                   absolute confidence.
                 </p>
-                <a href="#" className="card-link">
+                <a href="#!" onClick={e => e.preventDefault()} className="card-link">
                   Learn more <ExternalLink size={14} />
                 </a>
               </div>
@@ -299,7 +337,7 @@ const LandingPage = ({ onLogin }) => {
                   ensures you're always connected to your farm's data, allowing you to make quick, informed 
                   decisions directly from the field.
                 </p>
-                <a href="#" className="card-link">
+                <a href="#!" onClick={e => e.preventDefault()} className="card-link">
                   Learn more <ExternalLink size={14} />
                 </a>
               </div>
@@ -322,7 +360,7 @@ const LandingPage = ({ onLogin }) => {
                   <li>Increased recommendation accuracy with every input</li>
                   <li>Hyper-localized analysis for maximum relevance</li>
                 </ul>
-                <a href="#" className="card-link">
+                <a href="#!" onClick={e => e.preventDefault()} className="card-link">
                   Learn more <ExternalLink size={14} />
                 </a>
               </div>
@@ -582,9 +620,9 @@ const LandingPage = ({ onLogin }) => {
                 <h4 className="links-title">Company</h4>
                 <ul className="links-list">
                   <li><a href="#testimonials">Testimonials</a></li>
-                  <li><a href="#">Careers</a></li>
-                  <li><a href="#">Blog</a></li>
-                  <li><a href="#">Contact Us</a></li>
+                  <li><a href="#!" onClick={e => e.preventDefault()}>Careers</a></li>
+                  <li><a href="#!" onClick={e => e.preventDefault()}>Blog</a></li>
+                  <li><a href="#!" onClick={e => e.preventDefault()}>Contact Us</a></li>
                 </ul>
               </div>
             </div>
@@ -593,9 +631,9 @@ const LandingPage = ({ onLogin }) => {
           <div className="footer-bottom">
             <p className="footer-copy">2025 Planto. All Rights Reserved. Design by Team Originative Lab</p>
             <div className="footer-legal">
-              <a href="#">Privacy Policy</a>
-              <a href="#">Terms of Service</a>
-              <a href="#">Cookies Settings</a>
+              <a href="#!" onClick={e => e.preventDefault()}>Privacy Policy</a>
+              <a href="#!" onClick={e => e.preventDefault()}>Terms of Service</a>
+              <a href="#!" onClick={e => e.preventDefault()}>Cookies Settings</a>
             </div>
           </div>
         </div>
