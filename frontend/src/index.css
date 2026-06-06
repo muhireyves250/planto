@@ -2049,6 +2049,7 @@ body {
     background: rgba(255, 255, 255, 0.7) !important;
     border-color: #059669 !important;
     box-shadow: none !important;
+    transform: translateY(-8px) !important;
 }
 
 .card-header-simple h3 {
