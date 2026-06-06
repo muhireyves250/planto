@@ -4,15 +4,15 @@ import { CheckCircle2 } from 'lucide-react';
 const RecommendedActions = ({ latestPlan, latestSoil, alerts }) => {
   const actions = [];
   
-  if (latestPlan && latestPlan.plan_data && latestPlan.plan_data.length > 0) {
-    actions.push(`Apply ${latestPlan.plan_data[0].fertilizer} fertilizer`);
+  if (latestPlan && latestPlan.fertilizer_type && latestPlan.fertilizer_type !== 'None') {
+    actions.push(`Apply ${latestPlan.fertilizer_type} (${latestPlan.quantity_kg ?? 0} kg)`);
   } else {
     actions.push('No fertilizer needed right now');
   }
 
-  if (latestSoil?.humidity < 40) {
+  if (latestSoil?.moisture < 40) {
     actions.push('Increase watering slightly');
-  } else if (latestSoil?.humidity > 80) {
+  } else if (latestSoil?.moisture > 80) {
     actions.push('Reduce watering to let soil dry');
   } else {
     actions.push('Keep watering schedule normal');

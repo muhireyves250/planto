@@ -146,7 +146,7 @@ const Monitoring = ({ user, setActiveTab, setSoilTestParams, setHeaderActions })
     : 0;
 
   const activeCrops = plantedCrops.filter(c => c.status === 'active').length;
-  const healthScore = latestHealth?.overall_health ?? '--';
+  const healthScore = latestHealth?.health_score ?? '--';
   const activeAlerts = alerts.length;
 
   const renderMainContent = () => {

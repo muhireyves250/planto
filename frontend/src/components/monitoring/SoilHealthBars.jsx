@@ -9,7 +9,7 @@ const SoilHealthBars = ({ latestSoil }) => {
     { label: 'Nitrogen (N)', value: latestSoil.n, unit: 'mg/kg', target: 80, color: '#3b82f6', icon: Beaker },
     { label: 'Phosphorus (P)', value: latestSoil.p, unit: 'mg/kg', target: 50, color: '#8b5cf6', icon: Beaker },
     { label: 'Potassium (K)', value: latestSoil.k, unit: 'mg/kg', target: 50, color: '#f59e0b', icon: Beaker },
-    { label: 'Moisture', value: latestSoil.humidity, unit: '%', target: 60, color: '#0ea5e9', icon: Droplets },
+    { label: 'Moisture', value: latestSoil.moisture, unit: '%', target: 60, color: '#0ea5e9', icon: Droplets },
     { label: 'pH Level', value: latestSoil.ph, unit: 'pH', target: 7, color: '#10b981', icon: FlaskConical, isPH: true }
   ];
 
