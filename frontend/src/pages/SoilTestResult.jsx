@@ -1,5 +1,4 @@
-import React from 'react';
-import { ArrowLeft, Activity } from 'lucide-react';
+import { Activity, ArrowLeft, FlaskConical } from 'lucide-react';
 
 import SoilResultHero from '../components/results/SoilResultHero';
 import CropHealthSummary from '../components/results/CropHealthSummary';
@@ -8,48 +7,53 @@ import NutrientStatusBars from '../components/results/NutrientStatusBars';
 import NextActionPanel from '../components/results/NextActionPanel';
 
 const SoilTestResult = ({ result, cropName, onBack }) => {
-  
   if (!result) return null;
 
   return (
-    <div style={{ maxWidth: '900px', margin: '0 auto', paddingBottom: '3rem' }}>
-      <button 
-        onClick={onBack}
-        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', background: 'transparent', border: 'none', cursor: 'pointer', marginBottom: '1.5rem', fontWeight: 700, fontSize: '0.9rem', padding: '0.5rem 1rem', borderRadius: '99px', transition: 'background 0.2s' }}
-        onMouseOver={e => e.currentTarget.style.background = '#f1f5f9'}
-        onMouseOut={e => e.currentTarget.style.background = 'transparent'}
-      >
-        <ArrowLeft size={16} /> Return to Dashboard
-      </button>
+    <div className="dashboard-view animate-2" style={{ paddingTop: 0 }}>
 
-      <SoilResultHero cropName={cropName} />
-      
-      <CropHealthSummary 
-        stage={result.stage} 
-        healthScore={result.health_score} 
-        status={result.status} 
+      {/* Banner */}
+      <div className="pro-welcome-banner farmer-banner animate-1">
+        <div className="banner-content">
+          <button
+            onClick={onBack}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'rgba(255,255,255,0.75)', background: 'transparent', border: 'none', cursor: 'pointer', marginBottom: '0.6rem', fontWeight: 700, fontSize: '0.78rem', padding: 0 }}
+          >
+            <ArrowLeft size={13} /> Return to Dashboard
+          </button>
+          <h2 style={{ textTransform: 'capitalize' }}>{cropName} Soil Check Complete</h2>
+          <p>Your soil test has been analysed. Planto has prepared recommendations to help your crop grow healthy and strong.</p>
+        </div>
+        <div className="banner-icon">
+          <FlaskConical size={120} color="rgba(255,255,255,0.1)" />
+        </div>
+      </div>
+
+      {/* Stats strip */}
+      <CropHealthSummary
+        stage={result.stage}
+        healthScore={result.health_score}
+        status={result.status}
       />
 
-      <FertilizerRecommendationCards fertilizers={result.fertilizer_recommendations || result.fertilizer} />
-      
-      <NutrientStatusBars deficits={result.nutrient_deficits || result.deficit} />
-      
-      <NextActionPanel />
+      {/* Two-column grid */}
+      <div className="dashboard-grid-matching animate-3">
+        <div className="dashboard-col">
+          <FertilizerRecommendationCards fertilizers={result.fertilizer_recommendations || result.fertilizer} />
+          <NutrientStatusBars deficits={result.nutrient_deficits || result.deficit} />
+        </div>
+        <div className="dashboard-col">
+          <NextActionPanel />
 
-      <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
-        <button 
-          onClick={onBack}
-          style={{ flex: 1, background: '#16a34a', color: 'white', padding: '1.25rem', borderRadius: '16px', fontWeight: 700, fontSize: '1.1rem', border: 'none', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(22, 163, 74, 0.2)' }}
-        >
-          <Activity size={20} style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '0.5rem' }} />
-          Open Monitoring
-        </button>
-        <button 
-          onClick={onBack}
-          style={{ flex: 1, background: 'white', border: '2px solid #e2e8f0', color: '#475569', padding: '1.25rem', borderRadius: '16px', fontWeight: 700, fontSize: '1.1rem', cursor: 'pointer' }}
-        >
-          Test Again Later
-        </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
+            <button onClick={onBack} className="action-btn-pro" style={{ width: '100%', justifyContent: 'center', background: 'var(--bg-sidebar)', color: 'white', border: 'none' }}>
+              <Activity size={18} /> Open Monitoring
+            </button>
+            <button onClick={onBack} className="action-btn-pro" style={{ width: '100%', justifyContent: 'center', background: 'var(--bg-main)', color: 'var(--text-dark)', border: '2px solid var(--accent-emerald)' }}>
+              Test Again Later
+            </button>
+          </div>
+        </div>
       </div>
 
     </div>

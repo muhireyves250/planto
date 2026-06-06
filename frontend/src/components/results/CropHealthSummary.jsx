@@ -1,55 +1,58 @@
-import React from 'react';
-import { Sprout, Activity, Heart } from 'lucide-react';
+import { Sprout, Activity, Heart, Zap } from 'lucide-react';
 
 const CropHealthSummary = ({ stage, healthScore, status }) => {
   let healthColor = '#10b981';
-  let healthText = 'Healthy';
-  if (healthScore < 60) {
-    healthColor = '#ef4444';
-    healthText = 'Critical';
-  } else if (healthScore < 80) {
-    healthColor = '#f59e0b';
-    healthText = 'Moderate';
-  }
+  let healthBg = 'green-soft';
+  if (healthScore < 60) { healthColor = '#ef4444'; healthBg = 'orange-soft'; }
+  else if (healthScore < 80) { healthColor = '#f59e0b'; healthBg = 'yellow-soft'; }
 
-  let stageDesc = 'Early root and seed growth stage.';
-  if (stage?.toLowerCase().includes('vegetative')) stageDesc = 'Active leaf and stem growth.';
-  if (stage?.toLowerCase().includes('flowering')) stageDesc = 'Crop is producing flowers.';
+  let stageDesc = 'Seed establishment';
+  if (stage?.toLowerCase().includes('vegetative')) stageDesc = 'Leaf & stem growth';
+  if (stage?.toLowerCase().includes('flowering')) stageDesc = 'Flowering stage';
+  if (stage?.toLowerCase().includes('maturity')) stageDesc = 'Near harvest';
 
-  let statusDesc = 'Your crop is growing well but might need light nutrient support.';
-  if (healthScore < 60) statusDesc = 'Your crop needs immediate attention to recover health.';
-  else if (healthScore > 90) statusDesc = 'Your crop is in excellent condition. Keep it up!';
+  let statusLabel = 'Healthy';
+  if (healthScore < 60) statusLabel = 'Critical';
+  else if (healthScore < 80) statusLabel = 'Moderate';
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
-      
-      <div style={{ background: 'white', padding: '1.5rem', borderRadius: '20px', boxShadow: '0 4px 20px -2px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.03)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-          <div style={{ background: '#ecfdf5', padding: '0.5rem', borderRadius: '12px' }}><Sprout size={20} color="#10b981" /></div>
-          <h3 style={{ fontSize: '1.1rem', color: '#0f172a', margin: 0, fontWeight: 700 }}>{stage || 'Growth Stage'}</h3>
+    <div className="stats-strip animate-1" style={{ marginBottom: '1rem' }}>
+      <div className="stat-pill-card">
+        <div className={`stat-icon-circle ${healthBg}`}>
+          <Heart size={20} color={healthColor} />
         </div>
-        <p style={{ color: '#64748b', fontSize: '0.95rem', lineHeight: 1.5, margin: 0 }}>{stageDesc}</p>
-      </div>
-
-      <div style={{ background: 'white', padding: '1.5rem', borderRadius: '20px', boxShadow: '0 4px 20px -2px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.03)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-          <div style={{ background: `${healthColor}15`, padding: '0.5rem', borderRadius: '12px' }}><Heart size={20} color={healthColor} /></div>
-          <h3 style={{ fontSize: '1.5rem', color: healthColor, margin: 0, fontWeight: 800, fontFamily: 'var(--font-heading)' }}>
-            {healthScore}/100
-          </h3>
+        <div className="stat-data">
+          <span className="stat-label">Health Score</span>
+          <span className="stat-main" style={{ color: healthColor }}>{healthScore}/100</span>
         </div>
-        <p style={{ color: '#0f172a', fontSize: '1.05rem', fontWeight: 600, margin: '0 0 0.25rem' }}>{healthText}</p>
-        <p style={{ color: '#64748b', fontSize: '0.85rem', margin: 0 }}>Overall plant vitality</p>
       </div>
-
-      <div style={{ background: 'white', padding: '1.5rem', borderRadius: '20px', boxShadow: '0 4px 20px -2px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.03)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-          <div style={{ background: '#eff6ff', padding: '0.5rem', borderRadius: '12px' }}><Activity size={20} color="#3b82f6" /></div>
-          <h3 style={{ fontSize: '1.1rem', color: '#0f172a', margin: 0, fontWeight: 700 }}>Crop Status</h3>
+      <div className="stat-pill-card">
+        <div className="stat-icon-circle green-soft">
+          <Sprout size={20} color="#10b981" />
         </div>
-        <p style={{ color: '#64748b', fontSize: '0.95rem', lineHeight: 1.5, margin: 0 }}>{statusDesc}</p>
+        <div className="stat-data">
+          <span className="stat-label">Growth Stage</span>
+          <span className="stat-main" style={{ textTransform: 'capitalize' }}>{stage || 'Germination'}</span>
+        </div>
       </div>
-
+      <div className="stat-pill-card">
+        <div className="stat-icon-circle blue-soft">
+          <Activity size={20} color="#3b82f6" />
+        </div>
+        <div className="stat-data">
+          <span className="stat-label">Vitality</span>
+          <span className="stat-main">{statusLabel}</span>
+        </div>
+      </div>
+      <div className="stat-pill-card">
+        <div className="stat-icon-circle yellow-soft">
+          <Zap size={20} color="#eab308" />
+        </div>
+        <div className="stat-data">
+          <span className="stat-label">Phase</span>
+          <span className="stat-main" style={{ fontSize: '0.85rem' }}>{stageDesc}</span>
+        </div>
+      </div>
     </div>
   );
 };
