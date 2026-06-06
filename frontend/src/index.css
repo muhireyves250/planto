@@ -2301,21 +2301,34 @@ body {
     margin-top: 1rem;
 }
 
-/* Soil Test page — compact layout to fit in viewport */
-.soil-test-page .pro-welcome-banner {
-    padding: 1.1rem 1.5rem;
-    margin-bottom: 0.75rem;
+/* Soil Test page — no scroll, fills viewport exactly */
+.soil-test-page {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
-.soil-test-page .farmer-banner h2 { font-size: 1.3rem; }
-.soil-test-page .farmer-banner p  { font-size: 0.78rem; margin-top: 0.2rem; }
-.soil-test-page .banner-icon svg  { width: 70px; height: 70px; }
-.soil-test-page .widgets-grid     { gap: 1rem; margin-bottom: 0.5rem; }
-.soil-test-page .widget           { padding: 0.9rem 1rem; }
-.soil-test-page .widget-header    { margin-bottom: 0.6rem; }
-.soil-test-page .input-group-grid { gap: 0.55rem; }
-.soil-test-page .pro-input        { padding: 0.5rem 0.75rem 0.5rem 2.1rem; font-size: 0.9rem; }
-.soil-test-page .execute-row      { margin-top: 0.5rem; }
-.soil-test-page .action-btn-pro   { padding: 0.65rem 1.25rem; }
+.soil-test-page .pro-welcome-banner {
+    padding: 0.75rem 1.25rem;
+    margin-bottom: 0.6rem;
+    flex-shrink: 0;
+}
+.soil-test-page .farmer-banner h2 { font-size: 1.05rem; margin: 0; }
+.soil-test-page .farmer-banner p  { font-size: 0.72rem; margin-top: 0.1rem; opacity: 0.85; }
+.soil-test-page .banner-icon      { display: none; }
+.soil-test-page form.widgets-grid {
+    flex: 1;
+    gap: 0.75rem;
+    margin-bottom: 0;
+    min-height: 0;
+    align-items: stretch;
+}
+.soil-test-page .widget           { padding: 0.75rem 1rem; overflow: hidden; }
+.soil-test-page .widget-header    { margin-bottom: 0.5rem; }
+.soil-test-page .input-group-grid { gap: 0.4rem; }
+.soil-test-page .pro-input        { padding: 0.42rem 0.75rem 0.42rem 2.1rem; font-size: 0.88rem; }
+.soil-test-page .execute-row      { margin-top: 0.5rem; flex-shrink: 0; }
+.soil-test-page .action-btn-pro   { padding: 0.6rem 1.25rem; font-size: 0.9rem; }
 
 .action-btn-pro {
     background: linear-gradient(135deg, var(--accent-emerald) 0%, #059669 100%);
