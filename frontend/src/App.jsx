@@ -213,9 +213,11 @@ function App() {
   const fetchDashboardStats = async () => {
     if (!isAuthenticated || !user?.id) return;
     try {
-      const farmsData = await farmApi.getFarms();
+      const [farmsData, cropsData] = await Promise.all([
+        farmApi.getFarms(),
+        monitoringApi.getMyCrops(user.id)
+      ]);
       setFarmsCount(farmsData.length);
-      const cropsData = await monitoringApi.getMyCrops(user.id);
       setCropsCount(cropsData.length);
     } catch (err) {
       console.error('Failed to fetch dashboard stats:', err);
@@ -293,7 +295,6 @@ function App() {
     };
 
     try {
-      await new Promise(r => setTimeout(r, 800));
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: { 

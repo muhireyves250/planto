@@ -25,12 +25,19 @@ const Monitoring = ({ user, setActiveTab, setSoilTestParams, setHeaderActions })
       setError(null);
 
       let cropsData = [];
+      let alertsData = [];
+
       if (user?.id) {
-        cropsData = await monitoringApi.getMyCrops(user.id);
+        [cropsData, alertsData] = await Promise.all([
+          monitoringApi.getMyCrops(user.id),
+          alertApi.getAlerts()
+        ]);
       } else {
         cropsData = JSON.parse(localStorage.getItem('planto_guest_crops')) || [];
       }
+
       setPlantedCrops(cropsData);
+      setAlerts(alertsData);
 
       if (cropsData.length > 0) {
         setSelectedCrop(prev => {
@@ -42,13 +49,6 @@ const Monitoring = ({ user, setActiveTab, setSoilTestParams, setHeaderActions })
         });
       } else {
         setSelectedCrop(null);
-      }
-
-      if (user?.id) {
-        const alertsData = await alertApi.getAlerts();
-        setAlerts(alertsData);
-      } else {
-        setAlerts([]);
       }
     } catch (err) {
       console.error('Failed to load monitoring data:', err);

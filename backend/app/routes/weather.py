@@ -6,7 +6,7 @@ router = APIRouter(prefix="/weather", tags=["Weather Intelligence"])
 
 @router.get("/")
 async def get_farm_weather(lat: float, lon: float):
-    weather = weather_service.get_weather(lat, lon)
+    weather = await weather_service.get_weather(lat, lon)
     if not weather:
         # Fallback to mock data if API fails or no key
         return {

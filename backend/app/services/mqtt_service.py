@@ -48,7 +48,7 @@ def _on_message(client, userdata, msg):
     print(f"[MQTT] Received: {payload}")
 
     if payload == "1":
-        weather = weather_service.get_weather(WEATHER_LAT, WEATHER_LNG)
+        weather = weather_service.get_weather_sync(WEATHER_LAT, WEATHER_LNG)
         if weather:
             temp = weather["main"]["temp"]
             humidity = weather["main"]["humidity"]

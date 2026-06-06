@@ -163,7 +163,7 @@ html {
 }
 
 .btn-white {
-  background: #ffffff;
+  background: #fff4e0;
   border: 1px solid #e2e8f0;
   color: #0f172a;
   padding: 0.5rem 1.25rem;
@@ -203,7 +203,7 @@ html {
   display: inline-flex;
   align-items: center;
   gap: 0.75rem;
-  background: #ffffff;
+  background: #fff4e0;
   border: 1px solid #e2e8f0;
   padding: 0.2rem 0.5rem;
   border-radius: 9999px;
@@ -413,7 +413,7 @@ html {
 }
 
 .stat-card {
-  background: white;
+  background: #fff4e0;
   border-radius: 12px;
   padding: 0.75rem;
   display: flex;
@@ -462,7 +462,7 @@ html {
 }
 
 .mockup-card {
-  background: white;
+  background: #fff4e0;
   border-radius: 12px;
   padding: 1rem;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
@@ -631,7 +631,7 @@ html {
 .pointer-dot-inner {
   width: 6px;
   height: 6px;
-  background: white;
+  background: #fff4e0;
   border-radius: 50%;
   z-index: 2;
 }
@@ -1085,7 +1085,7 @@ html {
 }
 
 .image-dashboard {
-  background: white;
+  background: #fff4e0;
   margin: 1rem;
   border-radius: 20px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.05);
