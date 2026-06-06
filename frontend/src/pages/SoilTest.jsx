@@ -387,7 +387,7 @@ const SoilTest = ({
   };
 
   return (
-    <div className="dashboard-view animate-2" style={{ paddingTop: 0 }}>
+    <div className="dashboard-view animate-2 soil-test-page" style={{ paddingTop: 0 }}>
       {/* If telemetry result is ready, display detailed crop analysis overview */}
       {isMonitoring && monitoringResult ? (
         <SoilTestResult 
