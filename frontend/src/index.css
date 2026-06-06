@@ -743,15 +743,18 @@ body {
 }
 
 .matching-card {
-    background: rgba(255, 255, 255, 0.95);
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     border-radius: var(--radius-2xl);
     padding: 2rem;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-    border: 1px solid var(--accent-emerald); /* Matching the pro style */
-    transition: var(--transition-pro);
+    box-shadow: 0 15px 30px rgba(16, 185, 129, 0.12);
+    border: 1px solid var(--accent-emerald);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .matching-card:hover {
+    background: rgba(255, 255, 255, 0.7) !important;
     border-color: #059669 !important;
     box-shadow: none !important;
     transform: translateY(-8px) !important;
@@ -1948,6 +1951,7 @@ body {
 }
 
 .matching-card:hover {
+    background: rgba(255, 255, 255, 0.7) !important;
     transform: translateY(-8px) !important;
     box-shadow: none !important;
     border-color: #059669 !important;
@@ -2037,7 +2041,9 @@ body {
 }
 
 .matching-card {
-    background: var(--bg-main);
+    background: rgba(255, 255, 255, 0.7) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     padding: 1.25rem !important;
     border: 1px solid var(--accent-emerald) !important;
     box-shadow: 0 15px 30px rgba(16, 185, 129, 0.12) !important;
