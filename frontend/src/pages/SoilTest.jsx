@@ -422,8 +422,41 @@ const SoilTest = ({
 
           <form onSubmit={handleSubmit} className="widgets-grid animate-3">
             
-            {/* Weather / Environmental Widget (Prediction mode only) */}
-            {!isMonitoring && (
+            {/* Left card: Weather (prediction) or Crop Context (monitoring) */}
+            {isMonitoring ? (
+              <div className="widget weather-widget">
+                <div className="weather-bg-circles">
+                  <div className="weather-circle" style={{ width: '150px', height: '150px', top: '-20px', left: '-50px' }}></div>
+                  <div className="weather-circle" style={{ width: '80px', height: '80px', bottom: '20px', right: '40px' }}></div>
+                </div>
+                <div className="weather-content">
+                  <div className="widget-header" style={{ marginBottom: '0.75rem' }}>
+                    <span className="widget-title" style={{ color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <Sprout size={20} color="var(--accent-emerald)" />
+                      Crop Context
+                    </span>
+                    <span style={{ background: 'rgba(16,185,129,0.15)', color: 'var(--accent-emerald)', fontSize: '0.65rem', fontWeight: 800, padding: '0.3rem 0.7rem', borderRadius: '99px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      Monitoring
+                    </span>
+                  </div>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '1rem' }}>
+                    <div>
+                      <p style={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.3rem' }}>Crop</p>
+                      <p style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', fontFamily: 'var(--font-heading)', textTransform: 'capitalize', margin: 0, lineHeight: 1 }}>{params.cropName || 'Crop'}</p>
+                    </div>
+                    <div>
+                      <p style={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.3rem' }}>Growth Phase</p>
+                      <p style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--accent-emerald)', textTransform: 'capitalize', margin: 0 }}>{params.growthStage || 'Germination'}</p>
+                    </div>
+                    <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '12px', padding: '0.75rem 1rem', border: '1px solid rgba(255,255,255,0.08)' }}>
+                      <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.7)', margin: 0, lineHeight: 1.5, fontWeight: 500 }}>
+                        Enter your current soil readings. Planto will compare them against optimal levels for your crop and update your health indices.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
               <div className="widget weather-widget">
                 <div className="weather-bg-circles">
                   <div className="weather-circle" style={{ width: '150px', height: '150px', top: '-20px', left: '-50px' }}></div>
@@ -483,7 +516,7 @@ const SoilTest = ({
             )}
 
             {/* Soil Details Widget */}
-            <div className="widget growth-widget dashboard-card matching-card" style={{ position: 'relative', overflow: 'hidden', gridColumn: isMonitoring ? '1 / -1' : 'span 1' }}>
+            <div className="widget growth-widget dashboard-card matching-card" style={{ position: 'relative', overflow: 'hidden' }}>
               <div className="widget-header">
                 <span className="widget-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', position: 'relative' }}>
                   <FlaskConical size={20} color="var(--bg-sidebar)" />
