@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from uuid import UUID
 from app.models.planted_crop import PlantedCrop
 from app.models.soil_monitoring import SoilMonitoring
@@ -12,10 +12,27 @@ def create_planted_crop(db: Session, user_id: UUID, crop_name: str, status: str 
     return db_crop
 
 def get_planted_crops_by_user(db: Session, user_id: UUID):
-    return db.query(PlantedCrop).filter(PlantedCrop.user_id == user_id).all()
+    return (
+        db.query(PlantedCrop)
+        .options(
+            joinedload(PlantedCrop.monitoring_data),
+            joinedload(PlantedCrop.health_history),
+            joinedload(PlantedCrop.fertilizer_plans),
+        )
+        .filter(PlantedCrop.user_id == user_id)
+        .all()
+    )
 
 def get_all_planted_crops(db: Session):
-    return db.query(PlantedCrop).all()
+    return (
+        db.query(PlantedCrop)
+        .options(
+            joinedload(PlantedCrop.monitoring_data),
+            joinedload(PlantedCrop.health_history),
+            joinedload(PlantedCrop.fertilizer_plans),
+        )
+        .all()
+    )
 
 def get_planted_crop_by_id(db: Session, plant_id: UUID):
     return db.query(PlantedCrop).filter(PlantedCrop.id == plant_id).first()
