@@ -2016,7 +2016,7 @@ body {
 }
 
 .settings-grid-override {
-    grid-template-columns: 240px 1fr;
+    grid-template-columns: 1fr 1fr;
 }
 
 .dashboard-col {
@@ -2674,33 +2674,4 @@ body {
     .main-area {
         padding: 1.5rem 1rem;
     }
-}
-
-/* Settings page — no scroll, fills viewport */
-.settings-page {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-.settings-page .pro-welcome-banner {
-    padding: 0.7rem 1.25rem;
-    margin-bottom: 0.6rem;
-    flex-shrink: 0;
-}
-.settings-page .farmer-banner h2 { font-size: 1.05rem; margin: 0; }
-.settings-page .farmer-banner p  { font-size: 0.72rem; margin-top: 0.1rem; opacity: 0.85; }
-.settings-page .banner-icon      { display: none; }
-.settings-page .dashboard-grid-matching {
-    flex: 1;
-    min-height: 0;
-    margin-bottom: 0;
-}
-.settings-page .dashboard-col {
-    min-height: 0;
-    overflow: hidden;
-}
-.settings-page .dashboard-card.matching-card {
-    height: 100%;
-    overflow-y: auto;
 }
