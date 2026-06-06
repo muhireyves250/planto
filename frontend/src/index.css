@@ -2038,6 +2038,13 @@ body {
     border-radius: var(--radius-lg) !important;
 }
 
+.glass-morph.matching-card {
+    border: 1px solid var(--accent-emerald);
+    box-shadow: 0 15px 30px rgba(16, 185, 129, 0.12);
+    transform: translateY(-5px);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 .card-header-simple h3 {
     font-size: 0.95rem;
     font-weight: 800;
