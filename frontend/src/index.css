@@ -2047,6 +2047,10 @@ body {
 
 .glass-morph.matching-card:hover {
     background: rgba(255, 255, 255, 0.7) !important;
+    border-color: #059669 !important;
+    box-shadow:
+        0 0 0 2px rgba(16, 185, 129, 0.25),
+        0 20px 40px rgba(16, 185, 129, 0.22) !important;
 }
 
 .card-header-simple h3 {
