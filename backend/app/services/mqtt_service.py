@@ -66,7 +66,7 @@ def _on_message(client, userdata, msg):
         print("[MQTT] Sensor idle — keeping last reading")
 
 
-def start_mqtt_client():
+def _run_mqtt():
     client = mqtt.Client(client_id="planto-backend", clean_session=True)
     client.username_pw_set(MQTT_USER, MQTT_PASS)
     client.on_connect = _on_connect
@@ -77,6 +77,10 @@ def start_mqtt_client():
     except Exception as e:
         print(f"[MQTT] Initial connection failed: {e}. Will retry via loop.")
 
-    thread = threading.Thread(target=client.loop_forever, daemon=True)
+    client.loop_forever()
+
+
+def start_mqtt_client():
+    thread = threading.Thread(target=_run_mqtt, daemon=True)
     thread.start()
     print("[MQTT] Background thread started")
