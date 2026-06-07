@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   FlaskConical,
   Leaf,
@@ -9,9 +9,6 @@ import {
   CloudSun,
   MapPin,
   Loader2,
-  ShieldCheck,
-  AlertTriangle,
-  Beaker,
   TrendingUp,
   Activity,
   ArrowLeft,
@@ -109,8 +106,6 @@ const SoilTest = ({
   const [error, setError] = useState(null);
   const [envLoading, setEnvLoading] = useState(false);
   const [envError, setEnvError] = useState(null);
-  const [locationActive, setLocationActive] = useState(true);
-  
   // Monitoring result state after submission
   const [monitoringResult, setMonitoringResult] = useState(null);
 
@@ -386,12 +381,6 @@ const SoilTest = ({
     setActiveTab('monitoring');
   };
 
-  const getStatusColor = (status) => {
-    if (status === 'Healthy') return 'var(--accent-emerald)';
-    if (status === 'Moderate Risk') return '#f59e0b';
-    return '#ef4444';
-  };
-
   const fieldsNeeded = isMonitoring
     ? ['n', 'p', 'k', 'ph', 'moisture', 'temperature', 'humidity']
     : ['n', 'p', 'k', 'ph', 'temperature', 'humidity', 'rainfall'];
@@ -459,24 +448,38 @@ const SoilTest = ({
               </div>
             </div>
             <div className="stat-pill-card">
-              <div className="stat-icon-circle yellow-soft">
-                <TrendingUp size={20} color="#eab308" />
+              <div className={`stat-icon-circle ${filledCount === fieldsNeeded.length ? 'green-soft' : filledCount > 0 ? 'yellow-soft' : ''}`}
+                style={filledCount === 0 ? { background: 'rgba(0,0,0,0.04)' } : undefined}>
+                <TrendingUp size={20} color={filledCount === fieldsNeeded.length ? '#10b981' : filledCount > 0 ? '#eab308' : '#94a3b8'} />
               </div>
               <div className="stat-data">
-                <span className="stat-label">Form</span>
-                <span className="stat-main">{filledCount}/{fieldsNeeded.length} Fields</span>
+                <span className="stat-label">Fields Filled</span>
+                <span className="stat-main" style={{ color: filledCount === fieldsNeeded.length ? '#10b981' : filledCount > 0 ? '#d97706' : undefined }}>
+                  {filledCount}/{fieldsNeeded.length}
+                </span>
               </div>
             </div>
             <div className="stat-pill-card">
               <div
                 className="stat-icon-circle"
-                style={{ background: formProgress === 100 ? 'rgba(16,185,129,0.1)' : 'rgba(0,0,0,0.04)' }}
+                style={{ background: formProgress === 100 ? 'rgba(16,185,129,0.1)' : formProgress > 0 ? 'rgba(234,179,8,0.1)' : 'rgba(0,0,0,0.04)' }}
               >
-                <CheckCircle2 size={20} color={formProgress === 100 ? '#10b981' : '#94a3b8'} />
+                <CheckCircle2 size={20} color={formProgress === 100 ? '#10b981' : formProgress > 0 ? '#eab308' : '#94a3b8'} />
               </div>
               <div className="stat-data">
                 <span className="stat-label">Progress</span>
-                <span className="stat-main">{formProgress}%</span>
+                <span className="stat-main" style={{ color: formProgress === 100 ? '#10b981' : formProgress > 0 ? '#d97706' : undefined }}>
+                  {formProgress}%
+                </span>
+                <div style={{ width: '100%', height: '3px', background: 'rgba(0,0,0,0.06)', borderRadius: '99px', marginTop: '0.2rem', overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${formProgress}%`,
+                    background: formProgress === 100 ? '#10b981' : '#eab308',
+                    borderRadius: '99px',
+                    transition: 'width 0.3s ease-out'
+                  }} />
+                </div>
               </div>
             </div>
           </div>
