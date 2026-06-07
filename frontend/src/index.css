@@ -2016,7 +2016,7 @@ body {
 }
 
 .settings-grid-override {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 240px 1fr;
 }
 
 .dashboard-col {

@@ -124,7 +124,7 @@ const Settings = ({ user, setUser, setHeaderActions }) => {
       <div className="dashboard-grid-matching settings-grid-override">
         {/* Left Col: Navigation */}
         <div className="dashboard-col">
-           <div className="dashboard-card matching-card" style={{padding: '0.25rem', height: 'fit-content', alignSelf: 'start'}}>
+           <div className="dashboard-card matching-card" style={{padding: '0.25rem', height: '100%'}}>
               <div className="settings-nav">
                 {sections.map((section) => {
                   const Icon = section.icon;
