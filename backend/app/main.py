@@ -1,3 +1,5 @@
+import time
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
@@ -5,8 +7,19 @@ from app.core.database import engine, Base
 from app.routes import auth, prediction, monitoring, fertilizer, farm, weather, alert, sensor
 from app.services.mqtt_service import start_mqtt_client
 
-# Initialize Database Tables
-Base.metadata.create_all(bind=engine)
+logger = logging.getLogger(__name__)
+
+# Initialize Database Tables — retry on transient SSL/network errors (common with Neon auto-suspend)
+for attempt in range(1, 6):
+    try:
+        Base.metadata.create_all(bind=engine)
+        break
+    except Exception as e:
+        if attempt == 5:
+            logger.error("Could not connect to database after 5 attempts: %s", e)
+            raise
+        logger.warning("DB connection attempt %d failed (%s), retrying in 3s...", attempt, e)
+        time.sleep(3)
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
