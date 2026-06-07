@@ -243,6 +243,63 @@ const Settings = ({ user, setUser, setHeaderActions }) => {
               </div>
             )}
 
+            {activeSection === 'preferences' && (
+              <div className="settings-content-area animate-fade-in">
+                <div className="content-header" style={{marginBottom: '1.5rem'}}>
+                  <h3 style={{fontSize: '1.2rem'}}>Farm Preferences</h3>
+                  <p style={{fontSize: '0.8rem'}}>Set your default agronomic settings. These are used to pre-fill forms.</p>
+                </div>
+
+                <div className="settings-form-grid" style={{gap: '1.25rem'}}>
+                  <div className="form-group">
+                    <label style={{fontSize: '0.65rem'}}>Default Soil Type</label>
+                    <select
+                      name="default_soil_type"
+                      className="pro-input"
+                      value={settingsData.default_soil_type}
+                      onChange={handleInputChange}
+                      style={{paddingLeft: '0.75rem', fontSize: '0.85rem', height: '42px', cursor: 'pointer'}}
+                    >
+                      {['Loamy', 'Sandy', 'Clay', 'Silty', 'Peaty', 'Chalky'].map(t => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label style={{fontSize: '0.65rem'}}>Irrigation System</label>
+                    <select
+                      name="irrigation_system"
+                      className="pro-input"
+                      value={settingsData.irrigation_system}
+                      onChange={handleInputChange}
+                      style={{paddingLeft: '0.75rem', fontSize: '0.85rem', height: '42px', cursor: 'pointer'}}
+                    >
+                      {['Drip Irrigation', 'Sprinkler', 'Surface Irrigation', 'Subsurface Drip', 'Rain-fed'].map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group full-width">
+                    <label style={{fontSize: '0.65rem'}}>Farm Location (City or Region)</label>
+                    <div className="pro-input-wrapper">
+                      <div className="pro-input-icon"><MapPin size={14} /></div>
+                      <input
+                        type="text"
+                        name="farm_location"
+                        className="pro-input"
+                        value={settingsData.farm_location}
+                        onChange={handleInputChange}
+                        placeholder="e.g. Musanze, Northern Province"
+                        style={{fontSize: '0.85rem', padding: '0.5rem 0.5rem 0.5rem 2.2rem'}}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {activeSection === 'security' && (
               <div className="settings-content-area animate-fade-in">
                 <div className="content-header" style={{marginBottom: '1.5rem'}}>
