@@ -13,6 +13,7 @@ const SoilTest = lazy(() => import('./pages/SoilTest'));
 const FarmManagement = lazy(() => import('./pages/FarmManagement'));
 import { monitoringApi } from './api/monitoringApi';
 import { farmApi, weatherApi, alertApi } from './api/farmApi';
+import { getCached, setCached } from './api/cache';
 import { 
   Search,
   Bell,
@@ -211,20 +212,30 @@ function App() {
   const fetchAlerts = async () => {
     if (!isAuthenticated) return;
     try {
+      const cached = getCached('alerts');
+      if (cached) { setAlerts(cached); setUnreadAlertsCount(cached.filter(a => !a.is_read).length); }
       const data = await alertApi.getAlerts();
       setAlerts(data);
       setUnreadAlertsCount(data.filter(a => !a.is_read).length);
+      setCached('alerts', data);
     } catch (err) {
       console.error('Failed to fetch alerts:', err);
-      if (err.status === 401) {
-        handleLogout();
-      }
+      if (err.status === 401) handleLogout();
     }
   };
 
   const fetchDashboardStats = async () => {
     if (!isAuthenticated || !user?.id) return;
     try {
+      const cacheKey = `dashboard_${user.id}`;
+      const cached = getCached(cacheKey);
+      if (cached) {
+        setFarmsCount(cached.farmsCount);
+        setCropsCount(cached.cropsCount);
+        setCrops(cached.crops);
+        setLatestHealthScore(cached.latestHealthScore);
+      }
+
       const [farmsData, cropsData] = await Promise.all([
         farmApi.getFarms(),
         monitoringApi.getMyCrops(user.id)
@@ -233,7 +244,6 @@ function App() {
       setCropsCount(cropsData.length);
       setCrops(cropsData);
 
-      // Compute latest health score from most recently updated crop
       let bestScore = null;
       let bestDate = null;
       for (const crop of cropsData) {
@@ -246,8 +256,9 @@ function App() {
         }
       }
       setLatestHealthScore(bestScore);
+      setCached(cacheKey, { farmsCount: farmsData.length, cropsCount: cropsData.length, crops: cropsData, latestHealthScore: bestScore });
 
-      // Auto-fetch weather: use farm location first, fall back to browser geolocation
+      // Fire weather fetch without awaiting — it updates the card independently
       const firstFarm = farmsData[0];
       const fetchWeather = async (lat, lng) => {
         setWeatherLoading(true);
@@ -269,7 +280,7 @@ function App() {
       };
 
       if (firstFarm?.location_lat && firstFarm?.location_lng) {
-        await fetchWeather(firstFarm.location_lat, firstFarm.location_lng);
+        fetchWeather(firstFarm.location_lat, firstFarm.location_lng); // no await
       } else if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           (pos) => fetchWeather(pos.coords.latitude, pos.coords.longitude),
@@ -283,11 +294,9 @@ function App() {
 
   React.useEffect(() => {
     if (isAuthenticated) {
-      fetchAlerts();
-      fetchDashboardStats();
+      Promise.all([fetchAlerts(), fetchDashboardStats()]);
       const interval = setInterval(() => {
-        fetchAlerts();
-        fetchDashboardStats();
+        Promise.all([fetchAlerts(), fetchDashboardStats()]);
       }, 30000);
       return () => clearInterval(interval);
     } else {
