@@ -96,7 +96,8 @@ function App() {
   const [showAuth, setShowAuth] = useState(false);
   const [headerActions, setHeaderActions] = useState(null);
   const [soilTestParams, setSoilTestParams] = useState({ mode: 'prediction', plantId: null, cropName: '' });
-  const [weatherData, setWeatherData] = useState({ temp: '24', condition: 'Sunny', humidity: '62' });
+  const [weatherData, setWeatherData] = useState(null);
+  const [weatherLoading, setWeatherLoading] = useState(false);
   const [formData, setFormData] = useState({
     n: '',
     p: '',
@@ -246,11 +247,12 @@ function App() {
       }
       setLatestHealthScore(bestScore);
 
-      // Auto-fetch weather from first farm location
+      // Auto-fetch weather: use farm location first, fall back to browser geolocation
       const firstFarm = farmsData[0];
-      if (firstFarm?.location_lat && firstFarm?.location_lng) {
+      const fetchWeather = async (lat, lng) => {
+        setWeatherLoading(true);
         try {
-          const data = await weatherApi.getWeather(firstFarm.location_lat, firstFarm.location_lng);
+          const data = await weatherApi.getWeather(lat, lng);
           setWeatherData({
             temp: Math.round(data.temp),
             condition: data.condition,
@@ -260,8 +262,19 @@ function App() {
           });
           setWeatherFetchedAt(new Date());
         } catch {
-          // fall through — keep existing weather data
+          // leave weatherData null — card shows "unavailable"
+        } finally {
+          setWeatherLoading(false);
         }
+      };
+
+      if (firstFarm?.location_lat && firstFarm?.location_lng) {
+        await fetchWeather(firstFarm.location_lat, firstFarm.location_lng);
+      } else if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => fetchWeather(pos.coords.latitude, pos.coords.longitude),
+          () => setWeatherLoading(false)
+        );
       }
     } catch (err) {
       console.error('Failed to fetch dashboard stats:', err);
@@ -648,25 +661,37 @@ function App() {
                   {/* Weather Card */}
                   <div className="dashboard-card matching-card glass-morph">
                     <div className="card-header-simple"><h3><CloudSun size={20} color="var(--accent-blue)" /> Weather Today</h3></div>
-                    <div className="weather-summary" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem'}}>
-                      <div style={{textAlign: 'center'}}>
-                        <div style={{fontSize: '2.8rem', fontWeight: 800, color: 'var(--bg-sidebar)', letterSpacing: '-2px'}}>{weatherData.temp}°C</div>
-                        <div className="badge-mini-text" style={{background: 'var(--green-soft)', color: 'var(--accent-emerald)', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 800}}>{(weatherData.condition || 'Clouds').toUpperCase()}</div>
+                    {weatherLoading ? (
+                      <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '1.5rem 0.5rem', color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 600}}>
+                        <Loader2 size={16} style={{animation: 'spin 1s linear infinite'}} /> Fetching weather...
                       </div>
-                      <div style={{display: 'flex', flexDirection: 'column', gap: '0.75rem'}}>
-                        <div className="weather-pill"><Droplets size={16} color="var(--accent-blue)" /> <div className="pill-text"><span className="pill-label">Humidity</span><span className="pill-val">{weatherData.humidity}%</span></div></div>
-                        <div className="weather-pill"><Wind size={16} color="var(--text-muted)" /> <div className="pill-text"><span className="pill-label">Wind Speed</span><span className="pill-val">{weatherData.windSpeed || '12'} km/h</span></div></div>
+                    ) : !weatherData ? (
+                      <div style={{padding: '1.25rem 0.5rem', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: 600}}>
+                        Weather unavailable. Add a location to your farm to enable this.
                       </div>
-                    </div>
-                    {weatherContextLine && (
-                      <div style={{marginTop: '0.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', padding: '0 0.5rem 0.25rem'}}>
-                        {weatherContextLine}
-                      </div>
-                    )}
-                    {weatherTimestamp && (
-                      <div style={{fontSize: '0.68rem', color: 'var(--text-muted)', opacity: 0.7, padding: '0 0.5rem 0.25rem'}}>
-                        {weatherTimestamp}
-                      </div>
+                    ) : (
+                      <>
+                        <div className="weather-summary" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem'}}>
+                          <div style={{textAlign: 'center'}}>
+                            <div style={{fontSize: '2.8rem', fontWeight: 800, color: 'var(--bg-sidebar)', letterSpacing: '-2px'}}>{weatherData.temp}°C</div>
+                            <div className="badge-mini-text" style={{background: 'var(--green-soft)', color: 'var(--accent-emerald)', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 800}}>{(weatherData.condition || 'Clear').toUpperCase()}</div>
+                          </div>
+                          <div style={{display: 'flex', flexDirection: 'column', gap: '0.75rem'}}>
+                            <div className="weather-pill"><Droplets size={16} color="var(--accent-blue)" /> <div className="pill-text"><span className="pill-label">Humidity</span><span className="pill-val">{weatherData.humidity}%</span></div></div>
+                            <div className="weather-pill"><Wind size={16} color="var(--text-muted)" /> <div className="pill-text"><span className="pill-label">Wind Speed</span><span className="pill-val">{weatherData.windSpeed ?? '--'} km/h</span></div></div>
+                          </div>
+                        </div>
+                        {weatherContextLine && (
+                          <div style={{marginTop: '0.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', padding: '0 0.5rem 0.25rem'}}>
+                            {weatherContextLine}
+                          </div>
+                        )}
+                        {weatherTimestamp && (
+                          <div style={{fontSize: '0.68rem', color: 'var(--text-muted)', opacity: 0.7, padding: '0 0.5rem 0.25rem'}}>
+                            {weatherTimestamp}
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
 
