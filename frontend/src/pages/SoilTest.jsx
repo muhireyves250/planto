@@ -134,9 +134,9 @@ const SoilTest = ({
     const poll = async () => {
       try {
         const result = await sensorApi.getLatest();
-        if (result.data) {
-          const hasLiveData = result.data.n != null && result.data.p != null && result.data.k != null;
-          setSensorActive(!!result.data.active || hasLiveData);
+        const isActive = !!result.data?.active;
+        setSensorActive(isActive);
+        if (isActive && result.data) {
           setFormData(prev => ({
             ...prev,
             n: String(result.data.n),
@@ -148,7 +148,7 @@ const SoilTest = ({
             humidity: String(result.data.humidity),
             rainfall: String(result.data.rainfall)
           }));
-        } else {
+        } else if (!isActive) {
           setSensorActive(false);
         }
       } catch {
