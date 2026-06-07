@@ -1,21 +1,22 @@
-import React from 'react';
-import { Sprout } from 'lucide-react';
+import { Sprout, Heart } from 'lucide-react';
 
 const CropHeroCard = ({ crop, cropAge, latestHealth }) => {
-  // Determine health score based on latestHealth or defaults
   const healthScore = latestHealth ? latestHealth.health_score : 85;
-  let healthColor = '#10b981'; // Green
+  let healthColor = '#10b981';
   let healthBg = '#dcfce7';
   let healthStatus = 'Healthy';
+  let healthSentence = 'Your crop is growing well. Keep up the good work.';
 
   if (healthScore < 60) {
-    healthColor = '#ef4444'; // Red
+    healthColor = '#ef4444';
     healthBg = '#fee2e2';
-    healthStatus = 'Critical';
+    healthStatus = 'Needs Attention';
+    healthSentence = 'Your crop has some problems that need fixing soon.';
   } else if (healthScore < 80) {
-    healthColor = '#f59e0b'; // Orange
+    healthColor = '#f59e0b';
     healthBg = '#fef3c7';
     healthStatus = 'Moderate';
+    healthSentence = 'Your crop is doing okay, but a few things need attention.';
   }
 
   return (
@@ -24,11 +25,14 @@ const CropHeroCard = ({ crop, cropAge, latestHealth }) => {
         <div style={{ fontSize: '2.4rem', fontWeight: 800, color: 'var(--bg-sidebar)', letterSpacing: '-1.5px', textTransform: 'capitalize' }}>
           {crop.crop_name}
         </div>
-        <div className="badge-mini-text" style={{ background: healthBg, color: healthColor, padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 800 }}>
+        <div className="badge-mini-text" style={{ background: healthBg, color: healthColor, padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 800, marginBottom: '0.4rem' }}>
           {healthStatus.toUpperCase()}
         </div>
+        <p style={{ fontSize: '0.78rem', color: '#475569', fontWeight: 500, margin: 0, maxWidth: '200px', lineHeight: 1.4 }}>
+          {healthSentence}
+        </p>
       </div>
-      
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
         <div className="weather-pill">
           <Sprout size={16} color="var(--accent-emerald)" />
@@ -38,22 +42,10 @@ const CropHeroCard = ({ crop, cropAge, latestHealth }) => {
           </div>
         </div>
         <div className="weather-pill">
-          <div style={{ 
-            width: '16px', 
-            height: '16px', 
-            borderRadius: '50%', 
-            border: `2px solid ${healthColor}`, 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            fontSize: '8px',
-            fontWeight: 900
-          }}>
-            !
-          </div>
+          <Heart size={16} color={healthColor} fill={healthColor} />
           <div className="pill-text">
             <span className="pill-label">Health Score</span>
-            <span className="pill-val">{healthScore}%</span>
+            <span className="pill-val" style={{ color: healthColor }}>{healthScore}%</span>
           </div>
         </div>
       </div>

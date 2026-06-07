@@ -1,16 +1,13 @@
-import React from 'react';
-import { Beaker, Droplets, FlaskConical } from 'lucide-react';
+import { Beaker, Droplets } from 'lucide-react';
 
 const SoilHealthBars = ({ latestSoil }) => {
   if (!latestSoil) return null;
 
-  // Real data parsing, preserving actual pH
   const metrics = [
     { label: 'Nitrogen (N)', value: latestSoil.n, unit: 'mg/kg', target: 80, color: '#3b82f6', icon: Beaker },
     { label: 'Phosphorus (P)', value: latestSoil.p, unit: 'mg/kg', target: 50, color: '#8b5cf6', icon: Beaker },
     { label: 'Potassium (K)', value: latestSoil.k, unit: 'mg/kg', target: 50, color: '#f59e0b', icon: Beaker },
     { label: 'Moisture', value: latestSoil.moisture, unit: '%', target: 60, color: '#0ea5e9', icon: Droplets },
-    { label: 'pH Level', value: latestSoil.ph, unit: 'pH', target: 7, color: '#10b981', icon: FlaskConical, isPH: true }
   ];
 
   return (
@@ -25,17 +22,10 @@ const SoilHealthBars = ({ latestSoil }) => {
           let statusColor = '#10b981';
           let statusBg = '#dcfce7';
           
-          if (metric.isPH) {
-             percent = (metric.value / 14) * 100;
-             if (metric.value < 5.5) { status = 'Acidic'; statusColor = '#ef4444'; statusBg = '#fee2e2'; }
-             else if (metric.value > 7.5) { status = 'Alkaline'; statusColor = '#f59e0b'; statusBg = '#fef3c7'; }
-             else { status = 'Optimal'; }
-          } else {
-             percent = Math.min(100, Math.max(0, (metric.value / metric.target) * 100));
-             if (percent < 50) { status = 'Low'; statusColor = '#ef4444'; statusBg = '#fee2e2'; }
-             else if (percent > 120) { status = 'High'; statusColor = '#f59e0b'; statusBg = '#fef3c7'; }
-             else { status = 'Good'; }
-          }
+          percent = Math.min(100, Math.max(0, (metric.value / metric.target) * 100));
+          if (percent < 50) { status = 'Low'; statusColor = '#ef4444'; statusBg = '#fee2e2'; }
+          else if (percent > 120) { status = 'High'; statusColor = '#f59e0b'; statusBg = '#fef3c7'; }
+          else { status = 'Good'; }
 
           const Icon = metric.icon;
 
@@ -52,7 +42,7 @@ const SoilHealthBars = ({ latestSoil }) => {
               
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.2rem', margin: '0 0 0.5rem' }}>
                 <span style={{ fontSize: '1.4rem', fontFamily: 'var(--font-heading)', fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>
-                  {metric.isPH ? metric.value.toFixed(1) : Math.round(metric.value)}
+                  {Math.round(metric.value)}
                 </span>
                 <span style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 700 }}>{metric.unit}</span>
               </div>
