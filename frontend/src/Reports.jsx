@@ -27,6 +27,7 @@ import {
 } from 'recharts';
 
 import { getCached, setCached } from './api/cache';
+import { monitoringApi } from './api/monitoringApi';
 
 const ANALYTICS_URL = `${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080'}/predictions`;
 
@@ -34,6 +35,7 @@ const Reports = ({ user, setHeaderActions }) => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [plantedCrops, setPlantedCrops] = useState([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -43,16 +45,23 @@ const Reports = ({ user, setHeaderActions }) => {
         setLoading(false);
       }
       try {
-        const user = JSON.parse(localStorage.getItem('planto_user'));
-        const response = await fetch(ANALYTICS_URL, {
-          headers: {
-            ...(user?.access_token ? { 'Authorization': `Bearer ${user.access_token}` } : {})
-          }
-        });
-        const json = await response.json();
+        const storedUser = JSON.parse(localStorage.getItem('planto_user'));
+        const fetches = [
+          fetch(ANALYTICS_URL, {
+            headers: storedUser?.access_token ? { 'Authorization': `Bearer ${storedUser.access_token}` } : {}
+          })
+        ];
+        if (storedUser?.id) {
+          fetches.push(monitoringApi.getMyCrops(storedUser.id));
+        }
+        const results = await Promise.all(fetches);
+        const predResponse = results[0];
+        const cropsData = results[1];
+        const json = await predResponse.json();
         const sorted = (json || []).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
         setCached('predictions', sorted);
         setData(sorted);
+        if (cropsData) setPlantedCrops(cropsData);
       } catch (err) {
         console.error(err);
       } finally {
@@ -102,6 +111,62 @@ const Reports = ({ user, setHeaderActions }) => {
     { subject: 'pH Balance', A: data.length > 0 ? (data.reduce((acc, c) => acc + c.ph, 0) / data.length) * 10 : 0, fullMark: 140 },
     { subject: 'Humidity', A: data.length > 0 ? data.reduce((acc, c) => acc + c.humidity, 0) / data.length : 0, fullMark: 140 },
   ];
+
+  const computedInsights = (() => {
+    if (data.length < 2) return [];
+    const insights = [];
+
+    const half = Math.ceil(data.length / 2);
+    const recent = data.slice(0, half);
+    const older = data.slice(half);
+
+    const avgNRecent = recent.reduce((s, d) => s + d.n, 0) / recent.length;
+    const avgNOlder = older.reduce((s, d) => s + d.n, 0) / older.length;
+    const nChange = Math.round(((avgNRecent - avgNOlder) / Math.max(avgNOlder, 1)) * 100);
+    if (nChange <= -10) {
+      insights.push({
+        type: 'warning', icon: 'down',
+        title: 'Nitrogen Declining',
+        body: `N levels dropped ~${Math.abs(nChange)}% across your last ${data.length} tests. Consider Urea top-dressing.`
+      });
+    } else if (nChange >= 10) {
+      insights.push({
+        type: 'success', icon: 'up',
+        title: 'Nitrogen Improving',
+        body: `N levels rose ~${nChange}% in recent tests. Current soil management is effective.`
+      });
+    }
+
+    const phValues = data.map(d => d.ph);
+    const phMin = Math.min(...phValues).toFixed(1);
+    const phMax = Math.max(...phValues).toFixed(1);
+    const phRange = parseFloat(phMax) - parseFloat(phMin);
+    if (phRange < 0.6) {
+      insights.push({
+        type: 'success', icon: 'up',
+        title: 'pH Stability Confirmed',
+        body: `pH range is ${phMin}–${phMax} across all tests. Consistent and within normal bounds.`
+      });
+    } else {
+      insights.push({
+        type: 'warning', icon: 'down',
+        title: 'pH Variance Detected',
+        body: `pH swings between ${phMin} and ${phMax}. Unstable pH reduces nutrient uptake.`
+      });
+    }
+
+    const avgConfRecent = recent.reduce((s, d) => s + (d.confidence || 0), 0) / recent.length;
+    const avgConfOlder = older.reduce((s, d) => s + (d.confidence || 0), 0) / older.length;
+    if (avgConfRecent > avgConfOlder + 0.05) {
+      insights.push({
+        type: 'success', icon: 'up',
+        title: 'Prediction Accuracy Rising',
+        body: `Recent AI confidence is ${Math.round(avgConfRecent * 100)}% vs ${Math.round(avgConfOlder * 100)}% historically. Soil is becoming more predictable.`
+      });
+    }
+
+    return insights.slice(0, 3);
+  })();
 
   const exportCSV = () => {
     const headers = ['ID', 'Timestamp', 'Crop', 'Confidence', 'N', 'P', 'K', 'Temp', 'Humidity', 'pH', 'Rainfall'];
@@ -177,21 +242,23 @@ const Reports = ({ user, setHeaderActions }) => {
               <div className="stat-icon-circle blue-soft"><Layers size={20} color="#3b82f6" /></div>
               <div className="stat-data">
                 <span className="stat-label">Active Crops</span>
-                <span className="stat-main">{Math.ceil(data.length * 0.4)} Active</span>
+                <span className="stat-main">
+                  {plantedCrops.filter(c => c.status === 'active').length} Active
+                </span>
               </div>
             </div>
             <div className="stat-pill-card">
               <div className="stat-icon-circle orange-soft"><History size={20} color="#f59e0b" /></div>
               <div className="stat-data">
-                <span className="stat-label">Past Crops</span>
-                <span className="stat-main">{Math.floor(data.length * 0.6)} Harvested</span>
+                <span className="stat-label">Past Tests</span>
+                <span className="stat-main">{data.length} Records</span>
               </div>
             </div>
             <div className="stat-pill-card">
               <div className="stat-icon-circle green-soft"><TrendingUp size={20} color="#10b981" /></div>
               <div className="stat-data">
-                <span className="stat-label">Health Trend</span>
-                <span className="stat-main">Stable</span>
+                <span className="stat-label">Avg Confidence</span>
+                <span className="stat-main">{avgConfidence}%</span>
               </div>
             </div>
           </div>
@@ -235,20 +302,29 @@ const Reports = ({ user, setHeaderActions }) => {
               </div>
             </div>
             <div className="pro-insights-list" style={{marginTop: '0.5rem'}}>
-              <div className="pro-insight-item warning" style={{padding: '0.75rem', marginBottom: '0.5rem'}}>
-                <div className="insight-icon" style={{width: '28px', height: '28px'}}><TrendingDown size={14} /></div>
-                <div className="insight-content">
-                  <h4 style={{fontSize: '0.8rem'}}>Nitrogen Depletion</h4>
-                  <p style={{fontSize: '0.7rem'}}>Levels dropped 12% in last 3 tests.</p>
+              {computedInsights.length === 0 ? (
+                <div style={{
+                  padding: '1.5rem', textAlign: 'center',
+                  background: 'var(--green-soft)', borderRadius: 'var(--radius-lg)',
+                  border: '1px dashed rgba(16,185,129,0.25)'
+                }}>
+                  <p style={{fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600}}>
+                    Run at least 2 soil tests to see AI-computed insights here.
+                  </p>
                 </div>
-              </div>
-              <div className="pro-insight-item success" style={{padding: '0.75rem', marginBottom: '0.5rem'}}>
-                <div className="insight-icon" style={{width: '28px', height: '28px'}}><TrendingUp size={14} /></div>
-                <div className="insight-content">
-                  <h4 style={{fontSize: '0.8rem'}}>pH Stability Confirmed</h4>
-                  <p style={{fontSize: '0.7rem'}}>Consistently between 6.2 - 6.8.</p>
-                </div>
-              </div>
+              ) : (
+                computedInsights.map((ins, i) => (
+                  <div key={i} className={`pro-insight-item ${ins.type}`} style={{padding: '0.75rem', marginBottom: '0.5rem'}}>
+                    <div className="insight-icon" style={{width: '28px', height: '28px'}}>
+                      {ins.icon === 'up' ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                    </div>
+                    <div className="insight-content">
+                      <h4 style={{fontSize: '0.8rem'}}>{ins.title}</h4>
+                      <p style={{fontSize: '0.7rem'}}>{ins.body}</p>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
