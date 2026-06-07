@@ -113,8 +113,10 @@ const Settings = ({ user, setUser, setHeaderActions }) => {
       {/* Settings Welcome Banner - Matching Dashboard Template */}
       <div className="pro-welcome-banner farmer-banner animate-1" style={{padding: '1.5rem 2rem', marginBottom: '1.5rem'}}>
         <div className="banner-content">
-          <h2 style={{fontSize: '1.8rem'}}>Control Center</h2>
-          <p style={{fontSize: '0.9rem', maxWidth: '450px'}}>Configure your platform preferences, security, and farm metadata from one central hub.</p>
+          <h2 style={{fontSize: '1.8rem'}}>{user?.full_name?.split(' ')[0] || 'Farmer'}'s Settings</h2>
+          <p style={{fontSize: '0.9rem', maxWidth: '450px'}}>
+            Manage your profile, farm preferences, notifications, and security from one central hub.
+          </p>
         </div>
         <div className="banner-icon">
           <SettingsIcon size={80} color="rgba(255,255,255,0.1)" />
