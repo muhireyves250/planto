@@ -122,6 +122,7 @@ const SoilTest = ({
 
   const [formErrors, setFormErrors] = useState({});
   const [sensorActive, setSensorActive] = useState(false);
+  const [sensorHasData, setSensorHasData] = useState(false);
 
   useEffect(() => {
     // Clear custom header actions
@@ -134,9 +135,10 @@ const SoilTest = ({
     const poll = async () => {
       try {
         const result = await sensorApi.getLatest();
-        const isActive = !!result.data?.active;
-        setSensorActive(isActive);
-        if (isActive && result.data) {
+        const hasData = result.data?.n != null;
+        setSensorActive(!!result.data?.active);
+        setSensorHasData(hasData);
+        if (hasData) {
           setFormData(prev => ({
             ...prev,
             n: String(result.data.n),
@@ -148,8 +150,6 @@ const SoilTest = ({
             humidity: String(result.data.humidity),
             rainfall: String(result.data.rainfall)
           }));
-        } else if (!isActive) {
-          setSensorActive(false);
         }
       } catch {
         setSensorActive(false);
@@ -431,8 +431,8 @@ const SoilTest = ({
 
           <div className="stats-strip animate-1">
             <div className="stat-pill-card">
-              <div className={`stat-icon-circle ${sensorActive ? 'green-soft' : 'orange-soft'}`} style={{ position: 'relative' }}>
-                <Activity size={20} color={sensorActive ? '#10b981' : '#f59e0b'} />
+              <div className={`stat-icon-circle ${sensorActive ? 'green-soft' : sensorHasData ? 'blue-soft' : 'orange-soft'}`} style={{ position: 'relative' }}>
+                <Activity size={20} color={sensorActive ? '#10b981' : sensorHasData ? '#3b82f6' : '#f59e0b'} />
                 {sensorActive && (
                   <span style={{
                     position: 'absolute', top: 2, right: 2,
@@ -445,8 +445,8 @@ const SoilTest = ({
               </div>
               <div className="stat-data">
                 <span className="stat-label">Sensor</span>
-                <span className="stat-main" style={{ color: sensorActive ? '#10b981' : undefined }}>
-                  {sensorActive ? 'Connected' : 'No Signal'}
+                <span className="stat-main" style={{ color: sensorActive ? '#10b981' : sensorHasData ? '#3b82f6' : undefined }}>
+                  {sensorActive ? 'Live' : sensorHasData ? 'Last Reading' : 'No Signal'}
                 </span>
               </div>
             </div>
