@@ -135,7 +135,7 @@ const SoilTest = ({
       try {
         const result = await sensorApi.getLatest();
         if (result.data) {
-          setSensorActive(result.data.active === true);
+          setSensorActive(!!result.data.active);
           setFormData(prev => ({
             ...prev,
             n: String(result.data.n),
@@ -430,12 +430,23 @@ const SoilTest = ({
 
           <div className="stats-strip animate-1">
             <div className="stat-pill-card">
-              <div className={`stat-icon-circle ${sensorActive ? 'green-soft' : 'orange-soft'}`}>
+              <div className={`stat-icon-circle ${sensorActive ? 'green-soft' : 'orange-soft'}`} style={{ position: 'relative' }}>
                 <Activity size={20} color={sensorActive ? '#10b981' : '#f59e0b'} />
+                {sensorActive && (
+                  <span style={{
+                    position: 'absolute', top: 2, right: 2,
+                    width: 8, height: 8, borderRadius: '50%',
+                    background: '#10b981',
+                    boxShadow: '0 0 0 0 rgba(16,185,129,0.4)',
+                    animation: 'sensor-pulse 1.5s ease-out infinite'
+                  }} />
+                )}
               </div>
               <div className="stat-data">
                 <span className="stat-label">Sensor</span>
-                <span className="stat-main">{sensorActive ? 'Active' : 'No Signal'}</span>
+                <span className="stat-main" style={{ color: sensorActive ? '#10b981' : undefined }}>
+                  {sensorActive ? 'Connected' : 'No Signal'}
+                </span>
               </div>
             </div>
             <div className="stat-pill-card">
