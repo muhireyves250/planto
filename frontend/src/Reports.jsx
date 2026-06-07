@@ -30,7 +30,7 @@ import { getCached, setCached } from './api/cache';
 
 const ANALYTICS_URL = `${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080'}/predictions`;
 
-const Reports = ({ setHeaderActions }) => {
+const Reports = ({ user, setHeaderActions }) => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');

@@ -2,6 +2,8 @@ import React, { useState, lazy, Suspense } from 'react';
 import { useNavigate, useLocation, Routes, Route, Navigate } from 'react-router-dom';
 import LandingPage from './LandingPage';
 import AuthPage from './AuthPage';
+import ActiveCropsSummary from './components/dashboard/ActiveCropsSummary';
+import TodayActions from './components/dashboard/TodayActions';
 
 const Analytics = lazy(() => import('./Analytics'));
 const Reports = lazy(() => import('./Reports'));
@@ -61,6 +63,9 @@ function App() {
   const [unreadAlertsCount, setUnreadAlertsCount] = useState(0);
   const [farmsCount, setFarmsCount] = useState(0);
   const [cropsCount, setCropsCount] = useState(0);
+  const [crops, setCrops] = useState([]);
+  const [latestHealthScore, setLatestHealthScore] = useState(null);
+  const [weatherFetchedAt, setWeatherFetchedAt] = useState(null);
   
   const [user, setUser] = useState(() => {
     try {
@@ -225,6 +230,39 @@ function App() {
       ]);
       setFarmsCount(farmsData.length);
       setCropsCount(cropsData.length);
+      setCrops(cropsData);
+
+      // Compute latest health score from most recently updated crop
+      let bestScore = null;
+      let bestDate = null;
+      for (const crop of cropsData) {
+        if (crop.health_history?.length) {
+          const last = crop.health_history[crop.health_history.length - 1];
+          if (!bestDate || new Date(last.created_at) > new Date(bestDate)) {
+            bestDate = last.created_at;
+            bestScore = last.health_score ?? null;
+          }
+        }
+      }
+      setLatestHealthScore(bestScore);
+
+      // Auto-fetch weather from first farm location
+      const firstFarm = farmsData[0];
+      if (firstFarm?.location_lat && firstFarm?.location_lng) {
+        try {
+          const data = await weatherApi.getWeather(firstFarm.location_lat, firstFarm.location_lng);
+          setWeatherData({
+            temp: Math.round(data.temp),
+            condition: data.condition,
+            humidity: data.humidity,
+            windSpeed: data.windSpeed,
+            rainfall: data.rainfall,
+          });
+          setWeatherFetchedAt(new Date());
+        } catch {
+          // fall through — keep existing weather data
+        }
+      }
     } catch (err) {
       console.error('Failed to fetch dashboard stats:', err);
     }
@@ -525,7 +563,7 @@ function App() {
                 setToast={setToast}
               />
             } />
-            <Route path="/crop-status" element={<Reports setHeaderActions={setHeaderActions} />} />
+            <Route path="/crop-status" element={<Reports user={user} setHeaderActions={setHeaderActions} />} />
             <Route path="/monitoring" element={
               <Monitoring
                 user={user}
@@ -535,18 +573,43 @@ function App() {
               />
             } />
             <Route path="/settings" element={<Settings user={user} setUser={setUser} setHeaderActions={setHeaderActions} />} />
-            <Route path="/" element={(
+            <Route path="/" element={(() => {
+              const hour = new Date().getHours();
+              const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+              const firstName = user?.full_name?.split(' ')[0] || 'Farmer';
+              const bannerSubtitle = cropsCount === 0
+                ? 'Start by running a soil test to find the best crop for your land.'
+                : `You have ${cropsCount} crop${cropsCount === 1 ? '' : 's'} growing. Here's your farm overview for today.`;
+
+              const weatherContextLine = (() => {
+                if (!weatherData?.condition) return null;
+                const cond = (weatherData.condition || '').toLowerCase();
+                const rain = parseFloat(weatherData.rainfall) || 0;
+                if (rain > 10 || cond.includes('rain') || cond.includes('storm')) return 'Heavy rain — avoid fertilising today.';
+                if (cond.includes('cloud')) return 'Overcast — moderate conditions for field work.';
+                return 'Good conditions for field work today.';
+              })();
+
+              const weatherTimestamp = (() => {
+                if (!weatherFetchedAt) return null;
+                const mins = Math.floor((Date.now() - weatherFetchedAt.getTime()) / 60000);
+                return mins < 1 ? 'Updated just now' : `Updated ${mins} min ago`;
+              })();
+
+              return (
             <div className="dashboard-view animate-2" style={{ paddingTop: 0 }}>
+              {/* Section 1 — Personalised Banner */}
               <div className="pro-welcome-banner farmer-banner">
                 <div className="banner-content">
-                  <h2>Ready to plant?</h2>
-                  <p>Check your soil today to see which crops will grow best on your land.</p>
+                  <h2>{greeting}, {firstName}</h2>
+                  <p>{bannerSubtitle}</p>
                 </div>
                 <div className="banner-icon">
                   <Sprout size={120} color="rgba(255,255,255,0.1)" />
                 </div>
               </div>
 
+              {/* Section 2 — Stats Strip */}
               <div className="stats-strip animate-1">
                 <div className="stat-pill-card">
                   <div className="stat-icon-circle blue-soft"><Layers size={20} color="#3b82f6" /></div>
@@ -565,7 +628,7 @@ function App() {
                 <div className="stat-pill-card">
                   <div className="stat-icon-circle orange-soft"><AlertTriangle size={20} color="#f59e0b" /></div>
                   <div className="stat-data">
-                    <span className="stat-label">Warnings</span>
+                    <span className="stat-label">Active Alerts</span>
                     <span className="stat-main">{alerts.length === 0 ? 'No Issues' : `${alerts.length} Active`}</span>
                   </div>
                 </div>
@@ -573,7 +636,9 @@ function App() {
                   <div className="stat-icon-circle yellow-soft"><Zap size={20} color="#eab308" /></div>
                   <div className="stat-data">
                     <span className="stat-label">Soil Health</span>
-                    <span className="stat-main">Good</span>
+                    <span className="stat-main">
+                      {latestHealthScore !== null ? `${Math.round(latestHealthScore)}/100` : 'No Data'}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -593,6 +658,16 @@ function App() {
                         <div className="weather-pill"><Wind size={16} color="var(--text-muted)" /> <div className="pill-text"><span className="pill-label">Wind Speed</span><span className="pill-val">{weatherData.windSpeed || '12'} km/h</span></div></div>
                       </div>
                     </div>
+                    {weatherContextLine && (
+                      <div style={{marginTop: '0.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', padding: '0 0.5rem 0.25rem'}}>
+                        {weatherContextLine}
+                      </div>
+                    )}
+                    {weatherTimestamp && (
+                      <div style={{fontSize: '0.68rem', color: 'var(--text-muted)', opacity: 0.7, padding: '0 0.5rem 0.25rem'}}>
+                        {weatherTimestamp}
+                      </div>
+                    )}
                   </div>
 
                   {/* Alerts Card */}
@@ -622,10 +697,10 @@ function App() {
                         </table>
                       ) : (
                         <div className="all-operational-state" style={{
-                          display: 'flex', 
-                          flexDirection: 'column', 
-                          alignItems: 'center', 
-                          justifyContent: 'center', 
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
                           padding: '2.25rem 1.5rem',
                           background: 'var(--green-soft)',
                           borderRadius: '16px',
@@ -635,12 +710,12 @@ function App() {
                           transition: 'all 0.3s'
                         }}>
                           <div style={{
-                            width: '44px', 
-                            height: '44px', 
-                            borderRadius: '50%', 
-                            background: '#10b981', 
-                            display: 'flex', 
-                            alignItems: 'center', 
+                            width: '44px',
+                            height: '44px',
+                            borderRadius: '50%',
+                            background: '#10b981',
+                            display: 'flex',
+                            alignItems: 'center',
                             justifyContent: 'center',
                             color: 'white',
                             boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
@@ -657,51 +732,15 @@ function App() {
                   </div>
                 </div>
 
+                {/* Section 3 — Right Column: Active Crops + Today's Actions */}
                 <div className="dashboard-col">
-                  {/* Quick Actions */}
-                  <div className="dashboard-card matching-card" style={{background: 'var(--bg-sidebar)', color: 'white'}}>
-                    <div className="card-header-simple"><h3 style={{color: 'white'}}><Zap size={20} color="var(--accent-emerald)" /> Things You Can Do</h3></div>
-                    <div className="actions-list-simple" style={{display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem'}}>
-                      <button className="action-btn-pro" onClick={() => setActiveTab('soil-test')} style={{background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', justifyContent: 'center', padding: '1rem'}}>
-                        <FlaskConical size={18} /> Check Soil Health
-                      </button>
-                      <button className="action-btn-pro" onClick={() => setActiveTab('monitoring')} style={{background: 'var(--accent-emerald)', color: 'var(--bg-sidebar)', border: 'none', justifyContent: 'center', padding: '1rem'}}>
-                        <Activity size={18} /> View Crop Status
-                      </button>
-                    </div>
-                  </div>
-                  
-                  {/* Field Overview Map */}
-                  <div className="dashboard-card matching-card" style={{flex: 1, position: 'relative', overflow: 'hidden'}}>
-                    <div className="card-header-simple"><h3><MapPin size={20} color="var(--accent-emerald)" /> My Land Map</h3></div>
-                    
-                    <div className="isometric-map-container" style={{background: 'var(--green-soft)', borderRadius: '16px', border: '1px solid rgba(16, 185, 129, 0.1)', overflow: 'hidden'}}>
-                      <div className="isometric-grid">
-                        <div className="iso-plot plot-1"></div>
-                        <div className="iso-plot plot-2"></div>
-                        <div className="iso-plot plot-3"></div>
-                        <div className="iso-plot plot-4"></div>
-                        <div className="iso-plot plot-5"></div>
-                        <div className="iso-plot plot-6"></div>
-                        {/* Droplets pins */}
-                        <div className="iso-pin pin-1"><Droplets size={12} fill="white" /></div>
-                        <div className="iso-pin pin-2"><Droplets size={12} fill="white" /></div>
-                        <div className="iso-pin pin-3"><Droplets size={12} fill="white" /></div>
-                      </div>
-                    </div>
-
-                    <div style={{marginTop: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                      <div style={{fontSize: '0.8rem', fontWeight: 600}}>Land In Use</div>
-                      <div style={{fontSize: '0.8rem', fontWeight: 800, color: 'var(--accent-emerald)'}}>82% Planted</div>
-                    </div>
-                    <div style={{width: '100%', height: '6px', background: 'rgba(0,0,0,0.05)', borderRadius: '10px', marginTop: '0.5rem'}}>
-                      <div style={{width: '82%', height: '100%', background: 'var(--accent-emerald)', borderRadius: '10px', boxShadow: '0 0 10px rgba(16, 185, 129, 0.3)'}}></div>
-                    </div>
-                  </div>
+                  <ActiveCropsSummary crops={crops} />
+                  <TodayActions crops={crops} alerts={alerts} />
                 </div>
               </div>
             </div>
-          )} />
+              );
+            })()} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
           </Suspense>
