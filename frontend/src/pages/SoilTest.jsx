@@ -1,20 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  FlaskConical, 
-  Leaf, 
-  Sprout, 
-  Droplets, 
-  ThermometerSun, 
-  CloudRain, 
-  CloudSun, 
-  MapPin, 
-  Loader2, 
-  ShieldCheck, 
+import {
+  FlaskConical,
+  Leaf,
+  Sprout,
+  Droplets,
+  ThermometerSun,
+  CloudRain,
+  CloudSun,
+  MapPin,
+  Loader2,
+  ShieldCheck,
   AlertTriangle,
   Beaker,
   TrendingUp,
   Activity,
-  ArrowLeft
+  ArrowLeft,
+  CheckCircle2
 } from 'lucide-react';
 import { weatherApi } from '../api/farmApi';
 import { monitoringApi } from '../api/monitoringApi';
@@ -103,7 +104,7 @@ const SoilTest = ({
   setToast
 }) => {
   const isMonitoring = params.mode === 'monitoring';
-  
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [envLoading, setEnvLoading] = useState(false);
@@ -391,6 +392,24 @@ const SoilTest = ({
     return '#ef4444';
   };
 
+  const fieldsNeeded = isMonitoring
+    ? ['n', 'p', 'k', 'ph', 'moisture', 'temperature', 'humidity']
+    : ['n', 'p', 'k', 'ph', 'temperature', 'humidity', 'rainfall'];
+  const filledCount = fieldsNeeded.filter(f => formData[f] !== '').length;
+  const formProgress = Math.round((filledCount / fieldsNeeded.length) * 100);
+
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const firstName = user?.full_name?.split(' ')[0] || 'Farmer';
+
+  const bannerTitle = isMonitoring
+    ? `Soil Update — ${params.cropName || 'Crop'}`
+    : `${greeting}, ${firstName}`;
+
+  const bannerSubtitle = isMonitoring
+    ? `Enter fresh soil readings for ${params.cropName || 'your crop'}. AI will reassess your health index and update your fertilizer plan.`
+    : 'Enter your soil readings below. Our AI will identify the best crop for your land today.';
+
   return (
     <div className="dashboard-view animate-2 soil-test-page" style={{ paddingTop: 0 }}>
       {/* If telemetry result is ready, display detailed crop analysis overview */}
@@ -412,15 +431,53 @@ const SoilTest = ({
                   <ArrowLeft size={14} /> Back to Monitoring
                 </button>
               )}
-              <h2>{isMonitoring ? `Soil Update for ${params.cropName || 'Planted Crop'}` : 'Test Your Soil'}</h2>
-              <p>
-                {isMonitoring 
-                  ? 'Input new soil telemetry coordinates. The diagnostics core will run precision models to update crop health indices.' 
-                  : 'Enter your soil information and local weather below. Our AI will find the best crops to plant on your land.'}
-              </p>
+              <h2>{bannerTitle}</h2>
+              <p>{bannerSubtitle}</p>
             </div>
             <div className="banner-icon">
               <FlaskConical size={120} color="rgba(255,255,255,0.1)" />
+            </div>
+          </div>
+
+          <div className="stats-strip animate-1">
+            <div className="stat-pill-card">
+              <div className={`stat-icon-circle ${sensorActive ? 'green-soft' : 'orange-soft'}`}>
+                <Activity size={20} color={sensorActive ? '#10b981' : '#f59e0b'} />
+              </div>
+              <div className="stat-data">
+                <span className="stat-label">Sensor</span>
+                <span className="stat-main">{sensorActive ? 'Active' : 'No Signal'}</span>
+              </div>
+            </div>
+            <div className="stat-pill-card">
+              <div className="stat-icon-circle blue-soft">
+                <FlaskConical size={20} color="#3b82f6" />
+              </div>
+              <div className="stat-data">
+                <span className="stat-label">Mode</span>
+                <span className="stat-main">{isMonitoring ? 'Monitoring' : 'Prediction'}</span>
+              </div>
+            </div>
+            <div className="stat-pill-card">
+              <div className="stat-icon-circle yellow-soft">
+                <TrendingUp size={20} color="#eab308" />
+              </div>
+              <div className="stat-data">
+                <span className="stat-label">Form</span>
+                <span className="stat-main">{filledCount}/{fieldsNeeded.length} Fields</span>
+              </div>
+            </div>
+            <div className="stat-pill-card">
+              <div
+                className="stat-icon-circle"
+                style={{ background: formProgress === 100 ? 'rgba(16,185,129,0.1)' : 'rgba(0,0,0,0.04)' }}
+              >
+                <CheckCircle2 size={20} color={formProgress === 100 ? '#10b981' : '#94a3b8'} />
+              </div>
+              <div className="stat-data">
+                <span className="stat-label">Progress</span>
+                <span className="stat-main">{formProgress}%</span>
+              </div>
             </div>
           </div>
 
