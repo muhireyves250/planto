@@ -100,9 +100,19 @@ const Reports = ({ user, setHeaderActions }) => {
   const latest = data[0] || null;
   
   // Stats calculations
-  const avgConfidence = data.length > 0 
-    ? (data.reduce((acc, c) => acc + (c.confidence || 0), 0) / data.length * 100).toFixed(1) 
+  const avgConfidence = data.length > 0
+    ? (data.reduce((acc, c) => acc + (c.confidence || 0), 0) / data.length * 100).toFixed(1)
     : 0;
+
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const storedUser = (() => {
+    try { return JSON.parse(localStorage.getItem('planto_user')); } catch { return null; }
+  })();
+  const firstName = storedUser?.full_name?.split(' ')[0] || 'Farmer';
+  const recordSummary = data.length === 0
+    ? 'No soil tests recorded yet. Run your first test to begin building your archive.'
+    : `${data.length} soil test record${data.length === 1 ? '' : 's'} found. Filter by crop or export to CSV.`;
 
   const radarData = [
     { subject: 'Nitrogen', A: data.length > 0 ? data.reduce((acc, c) => acc + c.n, 0) / data.length : 0, fullMark: 140 },
@@ -194,8 +204,8 @@ const Reports = ({ user, setHeaderActions }) => {
       {/* Reports Welcome Banner - Matching Dashboard Template */}
       <div className="pro-welcome-banner farmer-banner animate-1">
         <div className="banner-content">
-          <h2>Archive Access</h2>
-          <p>Access your full history of soil analysis records. Filter by crop or date to find specific audits.</p>
+          <h2>{greeting}, {firstName}</h2>
+          <p>{recordSummary}</p>
           <div style={{marginTop: '1rem', display: 'flex', gap: '0.5rem'}}>
             <span className="badge-mini-text" style={{background: 'rgba(255,255,255,0.1)', color: 'white'}}>AUDIT LOG</span>
             <span className="badge-mini-text" style={{background: 'rgba(255,255,255,0.1)', color: 'white'}}>{data.length} ENTRIES</span>
