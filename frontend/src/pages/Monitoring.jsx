@@ -146,6 +146,14 @@ const Monitoring = ({ user, setActiveTab, setSoilTestParams, setHeaderActions })
     : 0;
 
   const activeCrops = plantedCrops.filter(c => c.status === 'active').length;
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const firstName = user?.full_name?.split(' ')[0] || 'Farmer';
+  const monitoringSubtitle = loading
+    ? 'Loading your crop data...'
+    : activeCrops === 0
+    ? 'No active crops yet. Run a soil test to get your first recommendation.'
+    : `You have ${activeCrops} active crop${activeCrops === 1 ? '' : 's'}. Here's your health overview for today.`;
   const healthScore = latestHealth?.health_score ?? '--';
   const activeAlerts = alerts.length;
 
@@ -400,8 +408,8 @@ const Monitoring = ({ user, setActiveTab, setSoilTestParams, setHeaderActions })
       {/* Banner — identical structure to home page "Ready to plant?" */}
       <div className="pro-welcome-banner farmer-banner">
         <div className="banner-content">
-          <h2>Ready to monitor?</h2>
-          <p>Check your crop health today to see how well your plants are growing on your land.</p>
+          <h2>{greeting}, {firstName}</h2>
+          <p>{monitoringSubtitle}</p>
         </div>
         <div className="banner-icon">
           <Sprout size={120} color="rgba(255,255,255,0.1)" />
