@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Leaf, Mail, Lock, User, ArrowRight, Eye, EyeOff, KeyRound, Wand2, ShieldCheck } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 import './AuthPage.css';
@@ -6,7 +6,9 @@ import './AuthPage.css';
 const AuthPage = ({ onLogin, onBack, initialIsLogin = true }) => {
   const [isLogin, setIsLogin] = useState(initialIsLogin);
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => {
+    try { return localStorage.getItem('planto_last_email') || ''; } catch { return ''; }
+  });
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [role, setRole] = useState('farmer');
@@ -14,9 +16,42 @@ const AuthPage = ({ onLogin, onBack, initialIsLogin = true }) => {
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
   const [showOTP, setShowOTP] = useState(false);
-  const [otp, setOtp] = useState('');
+  const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
+  const otpRefs = useRef([]);
   const [forgotState, setForgotState] = useState('none'); // 'none', 'request', 'reset'
   const [newPassword, setNewPassword] = useState('');
+
+  const otp = otpDigits.join('');
+
+  // Auto-submit when all 6 OTP digits filled
+  useEffect(() => {
+    if (showOTP && otp.length === 6 && !isLoading) {
+      submitOTP(otp);
+    }
+  }, [otp, showOTP]);
+
+  const handleOtpDigit = (index, value) => {
+    const digit = value.replace(/\D/g, '').slice(-1);
+    const next = [...otpDigits];
+    next[index] = digit;
+    setOtpDigits(next);
+    if (digit && index < 5) otpRefs.current[index + 1]?.focus();
+  };
+
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    const next = [...otpDigits];
+    for (let i = 0; i < 6; i++) next[i] = pasted[i] || '';
+    setOtpDigits(next);
+    otpRefs.current[Math.min(pasted.length, 5)]?.focus();
+  };
 
   const googleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
@@ -49,7 +84,6 @@ const AuthPage = ({ onLogin, onBack, initialIsLogin = true }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsLoading(false);
     setError(null);
     setSuccessMsg(null);
     setIsLoading(true);
@@ -68,30 +102,25 @@ const AuthPage = ({ onLogin, onBack, initialIsLogin = true }) => {
       });
 
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.detail || 'Authentication failed');
-      }
+      if (!response.ok) throw new Error(data.detail || 'Authentication failed');
 
       if (data.requires_otp) {
+        try { localStorage.setItem('planto_last_email', email); } catch {}
         setShowOTP(true);
-        setSuccessMsg("Please check your email for the verification code.");
+        setOtpDigits(['', '', '', '', '', '']);
+        setSuccessMsg("Check your email for the 6-digit code.");
+        setTimeout(() => otpRefs.current[0]?.focus(), 80);
       } else {
-        onLogin({
-          access_token: data.access_token,
-          ...data.user
-        });
+        onLogin({ access_token: data.access_token, ...data.user });
       }
     } catch (err) {
-      console.error('Auth Error:', err);
       setError(err.message);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleVerifyOTP = async (e) => {
-    e.preventDefault();
+  const submitOTP = async (otpValue) => {
     setIsLoading(true);
     setError(null);
     try {
@@ -99,20 +128,21 @@ const AuthPage = ({ onLogin, onBack, initialIsLogin = true }) => {
       const response = await fetch(`${BASE_URL}/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp })
+        body: JSON.stringify({ email, otp: otpValue })
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || 'Invalid verification code');
-      onLogin({
-        access_token: data.access_token,
-        ...data.user
-      });
+      onLogin({ access_token: data.access_token, ...data.user });
     } catch (err) {
       setError(err.message);
+      setOtpDigits(['', '', '', '', '', '']);
+      setTimeout(() => otpRefs.current[0]?.focus(), 50);
     } finally {
       setIsLoading(false);
     }
   };
+
+  const handleVerifyOTP = (e) => { e.preventDefault(); submitOTP(otp); };
 
   const handleForgotPasswordRequest = async (e) => {
     e.preventDefault();
@@ -306,21 +336,30 @@ const AuthPage = ({ onLogin, onBack, initialIsLogin = true }) => {
             ) : showOTP ? (
               <form onSubmit={handleVerifyOTP} className="auth-form">
                 <div className="form-group">
-                  <label>Verification Code</label>
-                  <div className="input-wrapper">
-                    <Lock className="input-icon" size={18} />
-                    <input
-                      type="text"
-                      placeholder="123456"
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value)}
-                      maxLength={6}
-                      required
-                    />
+                  <label style={{ textAlign: 'center', display: 'block' }}>Verification Code</label>
+                  <div className="otp-boxes" onPaste={handleOtpPaste}>
+                    {otpDigits.map((d, i) => (
+                      <input
+                        key={i}
+                        ref={el => otpRefs.current[i] = el}
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={1}
+                        value={d}
+                        onChange={e => handleOtpDigit(i, e.target.value)}
+                        onKeyDown={e => handleOtpKeyDown(i, e)}
+                        className="otp-box"
+                        autoComplete="off"
+                      />
+                    ))}
                   </div>
                 </div>
-                <button type="submit" className="submit-btn" disabled={isLoading}>
-                  {isLoading ? "Verifying..." : "Verify & Sign In"} <ArrowRight size={18} />
+                <button type="submit" className="submit-btn" disabled={isLoading || otp.length < 6}>
+                  {isLoading ? (
+                    <span className="otp-verifying"><span className="otp-spinner" />Verifying...</span>
+                  ) : (
+                    <>Verify & Sign In <ArrowRight size={18} /></>
+                  )}
                 </button>
               </form>
             ) : (

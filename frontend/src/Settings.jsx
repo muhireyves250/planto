@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import FarmManagement from './pages/FarmManagement';
 
-const Settings = ({ user, setUser, setHeaderActions }) => {
+const Settings = ({ user, setUser, setHeaderActions, onLogout }) => {
   const [saving, setSaving] = useState(false);
   const [activeSection, setActiveSection] = useState('profile');
   const [settingsData, setSettingsData] = useState({
@@ -267,7 +267,7 @@ const Settings = ({ user, setUser, setHeaderActions }) => {
           )}
 
           {/* Sign Out — always at bottom like crop-status export button */}
-          <button onClick={handleLogout} style={{ width: '100%', background: '#fff1f2', color: '#e11d48', border: 'none', borderRadius: '16px', padding: '1rem', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontFamily: "'Outfit', sans-serif" }}>
+          <button onClick={onLogout || handleLogout} style={{ width: '100%', background: 'linear-gradient(135deg, #fff1f2, #ffe4e6)', color: '#e11d48', border: '1.5px solid #fecdd3', borderRadius: '16px', padding: '1rem', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontFamily: "'Outfit', sans-serif", boxShadow: '0 2px 8px rgba(225,29,72,0.08)' }}>
             <LogOut size={16} /> Sign Out
           </button>
 
@@ -324,7 +324,7 @@ const Settings = ({ user, setUser, setHeaderActions }) => {
                 })}
               </div>
               <div style={{marginTop: 'auto', padding: '0.75rem', borderTop: '1px solid rgba(0,0,0,0.05)'}}>
-                 <button className="logout-btn" style={{padding: '0.65rem 1rem', fontSize: '0.85rem'}}>
+                 <button className="logout-btn" style={{padding: '0.65rem 1rem', fontSize: '0.85rem'}} onClick={onLogout || handleLogout}>
                    <LogOut size={16} />
                    <span>Sign Out</span>
                  </button>

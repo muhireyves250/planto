@@ -433,3 +433,57 @@
 .role-option.active svg {
   transform: scale(1.1);
 }
+
+/* OTP split boxes */
+.otp-boxes {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: center;
+  margin-top: 0.5rem;
+}
+
+.otp-box {
+  width: 48px;
+  height: 56px;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 1.5rem;
+  font-weight: 800;
+  text-align: center;
+  color: #1e362a;
+  background: #f8fafb;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+  font-family: 'Outfit', monospace;
+}
+
+.otp-box:focus {
+  border-color: #2d5240;
+  box-shadow: 0 0 0 3px rgba(45, 82, 64, 0.15);
+  background: #fff;
+}
+
+.otp-box:not(:placeholder-shown) {
+  border-color: #2d5240;
+  background: #f0fdf4;
+}
+
+.otp-verifying {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.otp-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: otp-spin 0.7s linear infinite;
+  display: inline-block;
+}
+
+@keyframes otp-spin {
+  to { transform: rotate(360deg); }
+}

@@ -80,13 +80,22 @@ function App() {
   const [soilTestParams, setSoilTestParams] = useState({ mode: 'prediction', plantId: null, cropName: '' });
   const [weatherData, setWeatherData] = useState(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const confirmLogout = () => setShowLogoutModal(true);
 
   const handleLogout = () => {
-    localStorage.removeItem('planto_user');
-    setIsAuthenticated(false);
-    setUser(null);
-    setResult(null);
-    navigate('/');
+    setShowLogoutModal(false);
+    setLoggingOut(true);
+    setTimeout(() => {
+      localStorage.removeItem('planto_user');
+      setIsAuthenticated(false);
+      setUser(null);
+      setResult(null);
+      setLoggingOut(false);
+      navigate('/');
+    }, 900);
   };
 
   const onLoginSuccess = (userData) => {
@@ -491,7 +500,7 @@ function App() {
                 setHeaderActions={setHeaderActions}
               />
             } />
-            <Route path="/settings" element={<Settings user={user} setUser={setUser} setHeaderActions={setHeaderActions} />} />
+            <Route path="/settings" element={<Settings user={user} setUser={setUser} setHeaderActions={setHeaderActions} onLogout={confirmLogout} />} />
 <Route path="/dashboard" element={(() => {
               if (window.innerWidth <= 768) return (
                 <MobileDashboard
@@ -711,7 +720,7 @@ function App() {
                 </span>
               )}
             </button>
-            <button className="icon-btn" onClick={handleLogout} title="Log Out"><LogOut size={20} /></button>
+            <button className="icon-btn" onClick={confirmLogout} title="Log Out"><LogOut size={20} /></button>
             <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop" alt="Profile" className="profile-avatar" />
           </div>
 
@@ -861,6 +870,48 @@ function App() {
         }
       `}</style>
       <MobileBottomNav />
+
+      {/* Pro logout confirmation modal */}
+      {showLogoutModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
+          <div style={{ background: '#fff', borderRadius: '24px', width: '100%', maxWidth: '420px', padding: '2rem 1.5rem 1.5rem', boxShadow: '0 24px 60px rgba(0,0,0,0.2)', animation: 'slideUpModal 0.22s cubic-bezier(0.34,1.56,0.64,1)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', marginBottom: '1.75rem' }}>
+              <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#fff1f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <LogOut size={24} color="#e11d48" />
+              </div>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', fontFamily: "'Outfit', sans-serif" }}>Sign out?</h3>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b', textAlign: 'center', fontFamily: "'Outfit', sans-serif" }}>
+                You'll need to sign in again to access your farm data.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button onClick={() => setShowLogoutModal(false)} style={{ flex: 1, padding: '0.85rem', borderRadius: '14px', border: '2px solid #e2e8f0', background: '#fff', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer', color: '#64748b', fontFamily: "'Outfit', sans-serif" }}>
+                Cancel
+              </button>
+              <button onClick={handleLogout} style={{ flex: 1, padding: '0.85rem', borderRadius: '14px', border: 'none', background: 'linear-gradient(135deg, #e11d48, #be123c)', color: '#fff', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer', fontFamily: "'Outfit', sans-serif" }}>
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Signing out overlay */}
+      {loggingOut && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 10000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #1e362a 0%, #2d5240 100%)', gap: '1.25rem' }}>
+          <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Leaf size={32} fill="#a7f3d0" color="#a7f3d0" />
+          </div>
+          <p style={{ color: '#a7f3d0', fontWeight: 700, fontSize: '1rem', margin: 0, fontFamily: "'Outfit', sans-serif", letterSpacing: '0.02em' }}>Signing you out...</p>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes slideUpModal {
+          from { transform: translateY(40px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 }
