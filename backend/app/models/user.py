@@ -33,6 +33,7 @@ class UserProfile(Base):
     country = Column(String)
     farm_size = Column(String)
     preferred_language = Column(String)
+    farm_location = Column(String)
     notification_preferences = Column(String, default="email,app") # e.g. "email,sms,app"
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

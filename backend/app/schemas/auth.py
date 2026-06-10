@@ -30,6 +30,7 @@ class UserProfileBase(BaseModel):
     country: str | None = None
     farm_size: str | None = None
     preferred_language: str | None = None
+    farm_location: str | None = None
 
 class UserProfileDB(UserProfileBase):
     id: UUID

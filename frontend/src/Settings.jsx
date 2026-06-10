@@ -45,9 +45,9 @@ const Settings = ({ user, setUser, setHeaderActions }) => {
             full_name: data.full_name || '',
             email: data.email || '',
             farm_name: data.farm_name || '',
-            primary_phone: data.primary_phone || '',
-            default_soil_type: data.default_soil_type || 'Loamy',
-            irrigation_system: data.irrigation_system || 'Drip Irrigation',
+            primary_phone: data.phone || '',
+            default_soil_type: data.farm_size || 'Loamy',
+            irrigation_system: data.preferred_language || 'Drip Irrigation',
             farm_location: data.farm_location || '',
             notify_email: data.notify_email !== false,
             notify_push: data.notify_push !== false,
@@ -74,7 +74,12 @@ const Settings = ({ user, setUser, setHeaderActions }) => {
       const res = await fetch(`${BASE_URL}/settings/${user.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settingsData)
+        body: JSON.stringify({
+          phone: settingsData.primary_phone,
+          farm_location: settingsData.farm_location,
+          farm_size: settingsData.default_soil_type,
+          preferred_language: settingsData.irrigation_system,
+        })
       });
       const updatedUser = await res.json();
       if (res.ok && setUser) {
@@ -99,6 +104,11 @@ const Settings = ({ user, setUser, setHeaderActions }) => {
     }
   }, [saving, settingsData, user, setHeaderActions]);
 
+  const handleLogout = () => {
+    localStorage.removeItem('planto_user');
+    if (setUser) setUser(null);
+  };
+
   const sections = [
     { id: 'profile', label: 'Profile Settings', icon: User },
     { id: 'security', label: 'Security', icon: Shield },
@@ -106,6 +116,175 @@ const Settings = ({ user, setUser, setHeaderActions }) => {
     { id: 'preferences', label: 'Preferences', icon: Globe },
     { id: 'farm', label: 'Manage My Farms', icon: MapPin }
   ];
+
+  const isMobile = window.innerWidth <= 768;
+
+  if (isMobile) {
+    const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.full_name || 'F')}&background=2d5240&color=fff&size=96&bold=true`;
+    const mobileTabs = [
+      { id: 'profile', label: 'Profile', icon: User },
+      { id: 'security', label: 'Security', icon: Shield },
+      { id: 'notifications', label: 'Alerts', icon: Bell },
+      { id: 'preferences', label: 'Prefs', icon: Globe },
+      { id: 'farm', label: 'Farms', icon: MapPin },
+    ];
+
+    return (
+      <div style={{ background: '#f0f2ef', minHeight: '100dvh', fontFamily: "'Outfit', sans-serif" }}>
+
+        {/* Fixed hero + tab nav */}
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 20, borderRadius: '0 0 22px 22px', overflow: 'hidden', boxShadow: '0 4px 24px rgba(0,0,0,0.15)' }}>
+          <div style={{ background: 'linear-gradient(135deg,#1e362a 0%,#2d5240 100%)', padding: '1rem 1rem 1rem' }}>
+            <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.55)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '0.5rem' }}>Account</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.85rem' }}>
+              <img src={avatarUrl} alt="avatar" style={{ width: 44, height: 44, borderRadius: '50%', border: '2.5px solid rgba(255,255,255,0.3)', objectFit: 'cover', flexShrink: 0 }} />
+              <div>
+                <div style={{ fontSize: '1.15rem', fontWeight: 900, color: '#fff', lineHeight: 1.1, letterSpacing: '-0.5px' }}>{user?.full_name || 'Farmer'}</div>
+                <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.65)', marginTop: '0.15rem' }}>{user?.email || ''}</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '0.4rem' }}>
+              {mobileTabs.map(({ id, label, icon: Icon }) => (
+                <button key={id} onClick={() => setActiveSection(id)} style={{ flex: 1, background: activeSection === id ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.1)', backdropFilter: 'blur(12px)', border: activeSection === id ? '1.5px solid rgba(255,255,255,0.5)' : '1px solid rgba(255,255,255,0.12)', borderRadius: '12px', padding: '0.55rem 0.25rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem', cursor: 'pointer', transition: 'all 0.2s', fontFamily: "'Outfit', sans-serif" }}>
+                  <Icon size={15} color={activeSection === id ? '#fff' : 'rgba(255,255,255,0.6)'} />
+                  <span style={{ fontSize: '0.55rem', fontWeight: 700, color: activeSection === id ? '#fff' : 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.04em', lineHeight: 1 }}>{label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Scrollable content below fixed hero */}
+        <div style={{ paddingTop: '200px', padding: '200px 1rem 0', paddingBottom: 'calc(100px + env(safe-area-inset-bottom))', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+
+          {/* ── Profile ── */}
+          {activeSection === 'profile' && (<>
+            <div style={{ background: '#fff', borderRadius: '20px', padding: '1.25rem', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
+              <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '1rem' }}>Personal Details</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {[
+                  { label: 'Full Name', name: 'full_name', type: 'text', icon: User, placeholder: 'Your full name' },
+                  { label: 'Email Address', name: 'email', type: 'email', icon: Mail, placeholder: 'your@email.com' },
+                  { label: 'Farm Name', name: 'farm_name', type: 'text', icon: Globe, placeholder: 'e.g. Verdant Valley Estates' },
+                  { label: 'Primary Phone', name: 'primary_phone', type: 'text', icon: Smartphone, placeholder: 'e.g. +250 7XX XXX XXX' },
+                ].map(({ label, name, type, icon: Icon, placeholder }) => (
+                  <div key={name}>
+                    <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.4rem' }}>{label}</div>
+                    <div style={{ position: 'relative' }}>
+                      <div style={{ position: 'absolute', left: '0.9rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}><Icon size={15} /></div>
+                      <input type={type} name={name} value={settingsData[name]} onChange={handleInputChange} placeholder={placeholder}
+                        style={{ width: '100%', height: 48, borderRadius: '14px', border: '1.5px solid #e2e8f0', background: '#f8fafc', paddingLeft: '2.5rem', paddingRight: '1rem', fontSize: '0.9rem', fontWeight: 600, fontFamily: "'Outfit', sans-serif", outline: 'none', boxSizing: 'border-box', color: '#0f172a' }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <button onClick={handleSave} disabled={saving} style={{ width: '100%', background: '#1e362a', color: '#fff', border: 'none', borderRadius: '16px', padding: '1rem', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontFamily: "'Outfit', sans-serif", opacity: saving ? 0.7 : 1 }}>
+              {saving ? <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} /> : <Save size={16} />}
+              {saving ? 'Saving...' : 'Save Changes'}
+            </button>
+          </>)}
+
+          {/* ── Notifications ── */}
+          {activeSection === 'notifications' && (
+            <div style={{ background: '#fff', borderRadius: '20px', padding: '1.25rem', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
+              <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '1rem' }}>Notification Channels</div>
+              {[
+                { name: 'notify_email', title: 'Email Alerts', desc: 'Daily harvest summaries via email', icon: Mail },
+                { name: 'notify_push', title: 'Push Notifications', desc: 'Real-time soil & crop alerts', icon: Bell },
+                { name: 'notify_sms', title: 'Critical SMS', desc: 'Weather emergency text messages', icon: Smartphone },
+              ].map(({ name, title, desc, icon: Icon }, i, arr) => (
+                <div key={name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.85rem 0', borderBottom: i < arr.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div style={{ width: 36, height: 36, borderRadius: '10px', background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon size={16} color="#059669" /></div>
+                    <div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>{title}</div>
+                      <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{desc}</div>
+                    </div>
+                  </div>
+                  <label className="mob-pro-switch">
+                    <input type="checkbox" name={name} checked={settingsData[name]} onChange={handleInputChange} />
+                    <span className="mob-slider" />
+                  </label>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ── Preferences ── */}
+          {activeSection === 'preferences' && (<>
+            <div style={{ background: '#fff', borderRadius: '20px', padding: '1.25rem', boxShadow: '0 2px 12px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Farm Defaults</div>
+              {[
+                { label: 'Default Soil Type', name: 'default_soil_type', opts: ['Loamy','Sandy','Clay','Silty','Peaty','Chalky'] },
+                { label: 'Irrigation System', name: 'irrigation_system', opts: ['Drip Irrigation','Sprinkler','Surface Irrigation','Subsurface Drip','Rain-fed'] },
+              ].map(({ label, name, opts }) => (
+                <div key={name}>
+                  <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.4rem' }}>{label}</div>
+                  <select name={name} value={settingsData[name]} onChange={handleInputChange}
+                    style={{ width: '100%', height: 48, borderRadius: '14px', border: '1.5px solid #e2e8f0', background: '#f8fafc', padding: '0 1rem', fontSize: '0.9rem', fontWeight: 600, fontFamily: "'Outfit', sans-serif", outline: 'none', color: '#0f172a', cursor: 'pointer' }}>
+                    {opts.map(o => <option key={o}>{o}</option>)}
+                  </select>
+                </div>
+              ))}
+              <div>
+                <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.4rem' }}>Farm Location</div>
+                <div style={{ position: 'relative' }}>
+                  <div style={{ position: 'absolute', left: '0.9rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}><MapPin size={15} /></div>
+                  <input type="text" name="farm_location" value={settingsData.farm_location} onChange={handleInputChange} placeholder="e.g. Musanze, Northern Province"
+                    style={{ width: '100%', height: 48, borderRadius: '14px', border: '1.5px solid #e2e8f0', background: '#f8fafc', paddingLeft: '2.5rem', paddingRight: '1rem', fontSize: '0.9rem', fontWeight: 600, fontFamily: "'Outfit', sans-serif", outline: 'none', boxSizing: 'border-box', color: '#0f172a' }} />
+                </div>
+              </div>
+            </div>
+            <button onClick={handleSave} disabled={saving} style={{ width: '100%', background: '#1e362a', color: '#fff', border: 'none', borderRadius: '16px', padding: '1rem', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontFamily: "'Outfit', sans-serif", opacity: saving ? 0.7 : 1 }}>
+              {saving ? <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} /> : <Save size={16} />}
+              {saving ? 'Saving...' : 'Save Changes'}
+            </button>
+          </>)}
+
+          {/* ── Security ── */}
+          {activeSection === 'security' && (<>
+            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '20px', padding: '1.25rem', display: 'flex', gap: '1rem', alignItems: 'center', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
+              <div style={{ width: 48, height: 48, borderRadius: '14px', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(16,185,129,0.15)', flexShrink: 0 }}><Fingerprint size={22} color="#059669" /></div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#166534', marginBottom: '0.2rem' }}>Two-Factor Auth</div>
+                <div style={{ fontSize: '0.75rem', color: '#15803d', marginBottom: '0.75rem' }}>Add an extra layer of security.</div>
+                <button style={{ background: '#1e362a', color: '#fff', border: 'none', borderRadius: '10px', padding: '0.45rem 1rem', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer', fontFamily: "'Outfit', sans-serif" }}>Enable 2FA</button>
+              </div>
+            </div>
+            <div style={{ background: '#fff', borderRadius: '20px', padding: '1.25rem', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
+              <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>Change Password</div>
+              <input type="password" placeholder="New password" style={{ width: '100%', height: 48, borderRadius: '14px', border: '1.5px solid #e2e8f0', background: '#f8fafc', padding: '0 1rem', fontSize: '0.9rem', fontWeight: 600, fontFamily: "'Outfit', sans-serif", outline: 'none', boxSizing: 'border-box', marginBottom: '0.75rem' }} />
+              <button style={{ width: '100%', background: '#1e362a', color: '#fff', border: 'none', borderRadius: '14px', padding: '0.85rem', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', fontFamily: "'Outfit', sans-serif" }}>Update Password</button>
+            </div>
+          </>)}
+
+          {/* ── Farms ── */}
+          {activeSection === 'farm' && (
+            <div style={{ background: '#fff', borderRadius: '20px', overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
+              <FarmManagement user={user} />
+            </div>
+          )}
+
+          {/* Sign Out — always at bottom like crop-status export button */}
+          <button onClick={handleLogout} style={{ width: '100%', background: '#fff1f2', color: '#e11d48', border: 'none', borderRadius: '16px', padding: '1rem', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontFamily: "'Outfit', sans-serif" }}>
+            <LogOut size={16} /> Sign Out
+          </button>
+
+        </div>
+
+        <style>{`
+          @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+          .mob-pro-switch { position: relative; display: inline-block; width: 48px; height: 24px; flex-shrink: 0; }
+          .mob-pro-switch input { opacity: 0; width: 0; height: 0; }
+          .mob-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #cbd5e1; transition: .3s; border-radius: 34px; }
+          .mob-slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background: white; transition: .3s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+          .mob-pro-switch input:checked + .mob-slider { background: #10b981; }
+          .mob-pro-switch input:checked + .mob-slider:before { transform: translateX(24px); }
+        `}</style>
+      </div>
+    );
+  }
 
   return (
     <div className="dashboard-view animate-2" style={{ paddingTop: 0 }}>

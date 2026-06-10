@@ -37,7 +37,8 @@ const scrollTo = (id) => {
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 
-const LandingPage = ({ onLogin }) => {
+const LandingPage = ({ onLogin, onSignup }) => {
+  const handleSignup = onSignup || onLogin;
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('home');
   const observerRef = useRef(null);
@@ -86,13 +87,13 @@ const LandingPage = ({ onLogin }) => {
           ))}
           <div className="landing-auth mobile-only">
             <button className="btn-outline" onClick={onLogin}>Log in</button>
-            <button className="btn-primary" onClick={onLogin}>Sign up</button>
+            <button className="btn-primary" onClick={handleSignup}>Sign up</button>
           </div>
         </div>
-        
+
         <div className="landing-auth desktop-only">
           <button className="btn-outline" onClick={onLogin}>Log in</button>
-          <button className="btn-primary" onClick={onLogin}>Sign up</button>
+          <button className="btn-primary" onClick={handleSignup}>Sign up</button>
         </div>
       </nav>
 
@@ -119,7 +120,7 @@ const LandingPage = ({ onLogin }) => {
           </p>
           
           <div className="hero-cta">
-            <button className="btn-primary btn-large" onClick={onLogin}>Start Farming Smarter <ArrowRight size={16} /></button>
+            <button className="btn-primary btn-large" onClick={handleSignup}>Start Farming Smarter <ArrowRight size={16} /></button>
             <button className="btn-white btn-large" onClick={() => scrollTo('how-it-works')}>How It Works <LayoutDashboard size={16} /></button>
           </div>
         </div>
@@ -564,7 +565,7 @@ const LandingPage = ({ onLogin }) => {
             <div className="cta-content">
               <h2 className="cta-title">Join the Green <br/> Farming Revolution</h2>
               <div className="cta-btns">
-                <button className="btn-primary btn-large" onClick={onLogin}>
+                <button className="btn-primary btn-large" onClick={handleSignup}>
                   Start Farming Smarter <ExternalLink size={16} />
                 </button>
                 <button className="btn-white btn-large" onClick={onLogin}>

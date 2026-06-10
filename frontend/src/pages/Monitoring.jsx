@@ -157,6 +157,109 @@ const Monitoring = ({ user, setActiveTab, setSoilTestParams, setHeaderActions })
   const healthScore = latestHealth?.health_score ?? '--';
   const activeAlerts = alerts.length;
 
+  // ── derived health values (used in both mobile and desktop) ──
+  const healthNum = typeof healthScore === 'number' ? healthScore : 0;
+  const healthColor = healthNum >= 80 ? '#10b981' : healthNum >= 60 ? '#f59e0b' : '#ef4444';
+  const healthBg    = healthNum >= 80 ? '#dcfce7'  : healthNum >= 60 ? '#fef3c7'  : '#fee2e2';
+  const healthLabel = healthNum >= 80 ? 'Healthy'  : healthNum >= 60 ? 'Moderate' : 'Needs Attention';
+
+  const stageFromDays = (d) => d <= 14 ? 'Germination' : d <= 45 ? 'Vegetative' : d <= 90 ? 'Flowering' : 'Maturity';
+  const stage = latestHealth?.stage || stageFromDays(cropAge ?? 0);
+
+  const renderMobileContent = () => {
+    if (loading) return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        {[1,2,3].map(i => (
+          <div key={i} className="skeleton-card skeleton-shimmer" style={{ height: 90, borderRadius: 20 }} />
+        ))}
+      </div>
+    );
+
+    if (error) return (
+      <div style={{ textAlign: 'center', padding: '3rem 1.5rem' }}>
+        <AlertTriangle size={40} color="#e11d48" style={{ margin: '0 auto 1rem', display: 'block' }} />
+        <p style={{ color: '#9f1239', fontWeight: 700, marginBottom: '1rem' }}>Couldn't load farm data</p>
+        <button onClick={loadData} style={{ background: '#fee2e2', border: 'none', color: '#9f1239', padding: '0.75rem 1.5rem', borderRadius: '12px', fontWeight: 700, cursor: 'pointer' }}>Try Again</button>
+      </div>
+    );
+
+    if (!selectedCrop) return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        {/* Empty state hero */}
+        <div style={{ background: 'linear-gradient(135deg,#1e362a 0%,#2d5240 100%)', borderRadius: '20px', padding: '1.5rem', color: '#fff', textAlign: 'center' }}>
+          <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}>
+            <Sprout size={28} color="#fff" />
+          </div>
+          <div style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '0.4rem' }}>No Active Crops</div>
+          <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)', marginBottom: '1.25rem' }}>Test your soil to get your first crop recommendation.</div>
+          <button onClick={() => setActiveTab('soil-test')} style={{ background: '#10b981', color: '#fff', border: 'none', borderRadius: '12px', padding: '0.75rem 1.5rem', fontWeight: 700, cursor: 'pointer', fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+            <FlaskConical size={16} /> Test Soil Now
+          </button>
+        </div>
+      </div>
+    );
+
+    if (selectedCrop.status === 'pending') return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        <div style={{ background: '#f0fdf4', border: '2px solid #bbf7d0', borderRadius: '20px', padding: '1.5rem', textAlign: 'center' }}>
+          <div style={{ background: '#dcfce7', width: 64, height: 64, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}>
+            <Sprout size={32} color="#16a34a" />
+          </div>
+          <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#166534', marginBottom: '0.5rem', textTransform: 'capitalize' }}>Plant {selectedCrop.crop_name}?</div>
+          <p style={{ color: '#15803d', fontSize: '0.85rem', lineHeight: 1.5, marginBottom: '1.25rem' }}>Your soil test is ready. Start growing this crop now?</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <button onClick={() => handleAcceptCrop(selectedCrop.id)} style={{ background: '#16a34a', color: '#fff', border: 'none', borderRadius: '14px', padding: '0.9rem', fontWeight: 700, cursor: 'pointer', fontSize: '0.95rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+              <Sprout size={18} /> Yes, Start Growing
+            </button>
+            <button onClick={() => handleDeclineCrop(selectedCrop.id)} style={{ background: 'transparent', border: '2px solid #fca5a5', color: '#ef4444', borderRadius: '14px', padding: '0.9rem', fontWeight: 700, cursor: 'pointer', fontSize: '0.95rem' }}>
+              No, Test Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+
+    // Active crop — cards only (hero is fixed above)
+    return (
+      <>
+        {/* ── Alerts ── */}
+        <div style={{ background: '#fff', borderRadius: '20px', padding: '1.1rem', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
+          <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <Bell size={15} color="#ef4444" /> Health Alerts
+          </div>
+          <SmartAlerts alerts={alerts} />
+        </div>
+
+        {/* ── Soil Telemetry ── */}
+        <div style={{ background: '#fff', borderRadius: '20px', padding: '1.1rem', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
+          <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <Activity size={15} color="#3b82f6" /> Soil Telemetry
+          </div>
+          <SoilHealthBars latestSoil={latestSoil} />
+        </div>
+
+        {/* ── Actions + Fertilizer ── */}
+        <div style={{ background: '#fff', borderRadius: '20px', padding: '1.1rem', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
+          <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <Zap size={15} color="#10b981" /> What To Do Today
+          </div>
+          <RecommendedActions latestPlan={latestPlan} latestSoil={latestSoil} alerts={alerts} />
+        </div>
+
+        {/* ── Fertilizer Plan ── */}
+        <div style={{ background: '#fff', borderRadius: '20px', padding: '1.1rem', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
+          <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <FlaskConical size={15} color="#8b5cf6" /> Fertilizer Plan
+          </div>
+          <FertilizerPlanGrid latestPlan={latestPlan} />
+        </div>
+
+        {/* ── Retest CTA ── */}
+        <SoilRetestCTA onRetest={handleCheckSoilAgain} cropAge={cropAge} />
+      </>
+    );
+  };
+
   const renderMainContent = () => {
     if (loading) {
       return (
@@ -401,6 +504,70 @@ const Monitoring = ({ user, setActiveTab, setSoilTestParams, setHeaderActions })
       </div>
     );
   };
+
+  const isMobile = window.innerWidth <= 768;
+
+  if (isMobile) {
+    // Fixed hero — always pinned regardless of scroll position
+    const heroContent = !loading && selectedCrop && selectedCrop.status === 'active' ? (
+      <div style={{ background: 'linear-gradient(135deg,#1e362a 0%,#2d5240 100%)', padding: '1rem 1rem 1rem' }}>
+        {plantedCrops.length > 1 && (
+          <div style={{ display: 'flex', gap: '0.4rem', overflowX: 'auto', scrollbarWidth: 'none', marginBottom: '0.6rem' }}>
+            {plantedCrops.map(crop => (
+              <button key={crop.id} onClick={() => setSelectedCrop(crop)} style={{ flexShrink: 0, padding: '0.25rem 0.75rem', borderRadius: '99px', border: 'none', background: selectedCrop?.id === crop.id ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)', color: '#fff', fontWeight: 700, fontSize: '0.72rem', cursor: 'pointer' }}>
+                {crop.crop_name}
+              </button>
+            ))}
+          </div>
+        )}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+          <div>
+            <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.55)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '0.2rem' }}>Currently Growing</div>
+            <div style={{ fontSize: '1.45rem', fontWeight: 900, color: '#fff', textTransform: 'capitalize', letterSpacing: '-0.5px', lineHeight: 1.1 }}>{selectedCrop.crop_name}</div>
+            <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.65)', marginTop: '0.2rem' }}>{stage} phase · {cropAge} days</div>
+          </div>
+          <div style={{ background: healthBg, color: healthColor, borderRadius: '99px', padding: '0.28rem 0.8rem', fontSize: '0.65rem', fontWeight: 800, flexShrink: 0 }}>{healthLabel.toUpperCase()}</div>
+        </div>
+        <div style={{ display: 'flex', gap: '0.45rem' }}>
+          {[
+            { val: `${healthScore}${healthScore !== '--' ? '%' : ''}`, lbl: 'Health' },
+            { val: cropAge, lbl: 'Days' },
+            { val: alerts.length, lbl: 'Alerts' },
+            { val: activeCrops, lbl: 'Crops' },
+          ].map(({ val, lbl }) => (
+            <div key={lbl} style={{ flex: 1, background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(12px)', borderRadius: '12px', padding: '0.55rem 0.4rem', textAlign: 'center' }}>
+              <div style={{ fontSize: '1rem', fontWeight: 900, color: '#fff' }}>{val}</div>
+              <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{lbl}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    ) : (
+      <div style={{ background: 'linear-gradient(135deg,#1e362a 0%,#2d5240 100%)', padding: '1.1rem 1rem' }}>
+        <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.55)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '0.25rem' }}>Crop Monitoring</div>
+        <div style={{ fontSize: '1.35rem', fontWeight: 900, color: '#fff', letterSpacing: '-0.5px' }}>
+          {loading ? 'Loading...' : selectedCrop?.status === 'pending' ? `Plant ${selectedCrop.crop_name}?` : 'No Active Crops'}
+        </div>
+      </div>
+    );
+
+    const heroHeight = (!loading && selectedCrop?.status === 'active') ? 185 : 80;
+
+    return (
+      <div style={{ background: '#f0f2ef', minHeight: '100dvh', fontFamily: "'Outfit', sans-serif" }}>
+        {/* Fixed hero */}
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 20, borderRadius: '0 0 22px 22px', overflow: 'hidden', boxShadow: '0 4px 24px rgba(0,0,0,0.15)' }}>
+          {heroContent}
+        </div>
+        {/* Scrollable cards pushed below fixed hero */}
+        <div key={contentKey} style={{ paddingTop: heroHeight + 12, padding: `${heroHeight + 12}px 1rem 0`, paddingBottom: 'calc(100px + env(safe-area-inset-bottom))' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {renderMobileContent()}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="dashboard-view animate-2" style={{ paddingTop: 0 }}>

@@ -3,8 +3,8 @@ import { Leaf, Mail, Lock, User, ArrowRight, Eye, EyeOff, KeyRound, Wand2, Shiel
 import { useGoogleLogin } from '@react-oauth/google';
 import './AuthPage.css';
 
-const AuthPage = ({ onLogin, onBack }) => {
-  const [isLogin, setIsLogin] = useState(true);
+const AuthPage = ({ onLogin, onBack, initialIsLogin = true }) => {
+  const [isLogin, setIsLogin] = useState(initialIsLogin);
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

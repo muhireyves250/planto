@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { farmApi } from '../api/farmApi';
-import { 
-  MapPin, 
-  Plus, 
-  Loader2, 
-  Layers, 
+import {
+  MapPin,
+  Plus,
+  Loader2,
+  Layers,
   TrendingUp,
   X,
   Edit2,
   Trash2,
-  CheckCircle2,
   AlertTriangle,
-  Save
+  Save,
+  Navigation
 } from 'lucide-react';
 
 const FarmManagement = ({ user }) => {
@@ -23,8 +23,12 @@ const FarmManagement = ({ user }) => {
     const [newFarm, setNewFarm] = useState({
         farm_name: '',
         location: '',
-        farm_size: ''
+        farm_size: '',
+        location_lat: '',
+        location_lng: ''
     });
+    const [detectingNew, setDetectingNew] = useState(false);
+    const [detectingEdit, setDetectingEdit] = useState(false);
 
     // Edit state
     const [editingId, setEditingId] = useState(null);
@@ -62,6 +66,21 @@ const FarmManagement = ({ user }) => {
         }
     };
 
+    const detectLocation = (onSuccess, setDetecting) => {
+        if (!navigator.geolocation) return;
+        setDetecting(true);
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                onSuccess(
+                    parseFloat(pos.coords.latitude.toFixed(6)),
+                    parseFloat(pos.coords.longitude.toFixed(6))
+                );
+                setDetecting(false);
+            },
+            () => setDetecting(false)
+        );
+    };
+
     const handleCreate = async (e) => {
         e.preventDefault();
         try {
@@ -78,7 +97,7 @@ const FarmManagement = ({ user }) => {
             }
             
             setIsAdding(false);
-            setNewFarm({ farm_name: '', location: '', farm_size: '' });
+            setNewFarm({ farm_name: '', location: '', farm_size: '', location_lat: '', location_lng: '' });
             fetchFarms();
         } catch (err) {
             console.error(err);
@@ -90,7 +109,9 @@ const FarmManagement = ({ user }) => {
             const payload = {
                 farm_name: editData.farm_name,
                 location: editData.location,
-                farm_size: editData.farm_size
+                farm_size: editData.farm_size,
+                location_lat: editData.location_lat ? parseFloat(editData.location_lat) : null,
+                location_lng: editData.location_lng ? parseFloat(editData.location_lng) : null,
             };
             await farmApi.updateFarm(id, payload);
             
@@ -154,34 +175,62 @@ const FarmManagement = ({ user }) => {
                     {isAdding && (
                         <form onSubmit={handleCreate} className="compact-form animate-slide-down">
                             <div className="form-row">
-                                <input 
-                                    type="text" 
-                                    className="compact-input" 
+                                <input
+                                    type="text"
+                                    className="compact-input"
                                     placeholder="Field Name (e.g. North Plot)"
-                                    value={newFarm.farm_name} 
+                                    value={newFarm.farm_name}
                                     onChange={e => setNewFarm({...newFarm, farm_name: e.target.value})}
-                                    required 
+                                    required
                                 />
-                                <input 
-                                    type="text" 
-                                    className="compact-input" 
-                                    placeholder="Location"
-                                    value={newFarm.location} 
+                                <input
+                                    type="text"
+                                    className="compact-input"
+                                    placeholder="Location (e.g. Kigali, Rwanda)"
+                                    value={newFarm.location}
                                     onChange={e => setNewFarm({...newFarm, location: e.target.value})}
                                 />
-                                <div style={{ display: 'flex', gap: '0.75rem', flex: 1, minWidth: '200px' }}>
-                                    <input 
-                                        type="text" 
-                                        className="compact-input" 
-                                        placeholder="Size (Hectares)"
-                                        value={newFarm.farm_size} 
-                                        onChange={e => setNewFarm({...newFarm, farm_size: e.target.value})}
-                                        style={{ flex: 1 }}
-                                    />
-                                    <button type="submit" className="btn-compact btn-primary" style={{ flexShrink: 0 }}>
-                                        Save Field
-                                    </button>
-                                </div>
+                                <input
+                                    type="text"
+                                    className="compact-input"
+                                    placeholder="Size (Hectares)"
+                                    value={newFarm.farm_size}
+                                    onChange={e => setNewFarm({...newFarm, farm_size: e.target.value})}
+                                />
+                            </div>
+                            <div className="form-row" style={{ marginTop: '0.5rem', alignItems: 'center' }}>
+                                <input
+                                    type="number"
+                                    step="any"
+                                    className="compact-input"
+                                    placeholder="Latitude (e.g. -1.9441)"
+                                    value={newFarm.location_lat}
+                                    onChange={e => setNewFarm({...newFarm, location_lat: e.target.value})}
+                                />
+                                <input
+                                    type="number"
+                                    step="any"
+                                    className="compact-input"
+                                    placeholder="Longitude (e.g. 30.0619)"
+                                    value={newFarm.location_lng}
+                                    onChange={e => setNewFarm({...newFarm, location_lng: e.target.value})}
+                                />
+                                <button
+                                    type="button"
+                                    className="btn-compact"
+                                    style={{ background: '#eff6ff', color: '#2563eb', flexShrink: 0 }}
+                                    disabled={detectingNew}
+                                    onClick={() => detectLocation(
+                                        (lat, lng) => setNewFarm(f => ({...f, location_lat: lat, location_lng: lng})),
+                                        setDetectingNew
+                                    )}
+                                >
+                                    {detectingNew ? <Loader2 size={14} style={{animation:'spin 1s linear infinite'}} /> : <Navigation size={14} />}
+                                    {detectingNew ? 'Detecting...' : 'Use My Location'}
+                                </button>
+                                <button type="submit" className="btn-compact btn-primary" style={{ flexShrink: 0 }}>
+                                    Save Field
+                                </button>
                             </div>
                         </form>
                     )}
@@ -196,29 +245,60 @@ const FarmManagement = ({ user }) => {
                                 {isEditing ? (
                                     /* EDIT MODE */
                                     <div className="card-edit-mode">
-                                        <input 
-                                            type="text" 
-                                            className="compact-input" 
-                                            value={editData.farm_name} 
+                                        <input
+                                            type="text"
+                                            className="compact-input"
+                                            value={editData.farm_name || ''}
                                             onChange={e => setEditData({...editData, farm_name: e.target.value})}
                                             placeholder="Field Name"
                                         />
                                         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                                            <input 
-                                                type="text" 
-                                                className="compact-input" 
-                                                value={editData.location} 
+                                            <input
+                                                type="text"
+                                                className="compact-input"
+                                                value={editData.location || ''}
                                                 onChange={e => setEditData({...editData, location: e.target.value})}
                                                 placeholder="Location"
                                             />
-                                            <input 
-                                                type="text" 
-                                                className="compact-input" 
+                                            <input
+                                                type="text"
+                                                className="compact-input"
                                                 style={{ width: '80px' }}
-                                                value={editData.farm_size} 
+                                                value={editData.farm_size || ''}
                                                 onChange={e => setEditData({...editData, farm_size: e.target.value})}
-                                                placeholder="Size"
+                                                placeholder="Size (HA)"
                                             />
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', alignItems: 'center' }}>
+                                            <input
+                                                type="number"
+                                                step="any"
+                                                className="compact-input"
+                                                value={editData.location_lat || ''}
+                                                onChange={e => setEditData({...editData, location_lat: e.target.value})}
+                                                placeholder="Latitude"
+                                            />
+                                            <input
+                                                type="number"
+                                                step="any"
+                                                className="compact-input"
+                                                value={editData.location_lng || ''}
+                                                onChange={e => setEditData({...editData, location_lng: e.target.value})}
+                                                placeholder="Longitude"
+                                            />
+                                            <button
+                                                type="button"
+                                                className="btn-icon"
+                                                style={{ background: '#eff6ff', color: '#2563eb', width: 'auto', padding: '0.25rem 0.5rem', flexShrink: 0 }}
+                                                disabled={detectingEdit}
+                                                title="Use my current location"
+                                                onClick={() => detectLocation(
+                                                    (lat, lng) => setEditData(d => ({...d, location_lat: lat, location_lng: lng})),
+                                                    setDetectingEdit
+                                                )}
+                                            >
+                                                {detectingEdit ? <Loader2 size={13} style={{animation:'spin 1s linear infinite'}} /> : <Navigation size={13} />}
+                                            </button>
                                         </div>
                                         <div className="edit-actions">
                                             <button onClick={() => setEditingId(null)} className="btn-icon btn-cancel"><X size={14} /></button>
@@ -252,6 +332,17 @@ const FarmManagement = ({ user }) => {
                                                 <Layers size={12} />
                                                 <span>{farm.farm_size ? `${farm.farm_size} HA` : 'N/A'}</span>
                                             </div>
+                                            {farm.location_lat && farm.location_lng ? (
+                                                <div className="detail-item" style={{ color: '#2563eb' }}>
+                                                    <Navigation size={12} />
+                                                    <span>{Number(farm.location_lat).toFixed(4)}, {Number(farm.location_lng).toFixed(4)}</span>
+                                                </div>
+                                            ) : (
+                                                <div className="detail-item" style={{ color: '#f59e0b' }}>
+                                                    <Navigation size={12} />
+                                                    <span>No GPS — weather won't load</span>
+                                                </div>
+                                            )}
                                         </div>
 
                                         <div className="card-bottom-row">

@@ -212,7 +212,8 @@ async def get_settings(user_id: UUID, db: Session = Depends(get_db)):
         "phone": profile.phone if profile else None,
         "country": profile.country if profile else None,
         "farm_size": profile.farm_size if profile else None,
-        "preferred_language": profile.preferred_language if profile else None
+        "preferred_language": profile.preferred_language if profile else None,
+        "farm_location": profile.farm_location if profile else None,
     }
 
 @router.put("/settings/{user_id}")

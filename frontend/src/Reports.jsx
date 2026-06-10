@@ -198,6 +198,144 @@ const Reports = ({ user, setHeaderActions }) => {
     document.body.removeChild(link);
   };
 
+  const formatDate = (ts) => {
+    const d = new Date(ts);
+    if (isNaN(d.getTime())) return 'Unknown date';
+    return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const isMobile = window.innerWidth <= 768;
+
+  if (isMobile) {
+    return (
+      <div style={{ background: '#f0f2ef', minHeight: '100dvh', fontFamily: "'Outfit', sans-serif" }}>
+
+        {/* Fixed hero */}
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 20, borderRadius: '0 0 22px 22px', overflow: 'hidden', boxShadow: '0 4px 24px rgba(0,0,0,0.15)' }}>
+          <div style={{ background: 'linear-gradient(135deg,#1e362a 0%,#2d5240 100%)', padding: '1rem 1rem 1rem' }}>
+            <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.55)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '0.25rem' }}>Soil Intelligence</div>
+            <div style={{ fontSize: '1.35rem', fontWeight: 900, color: '#fff', marginBottom: '0.75rem', letterSpacing: '-0.5px' }}>
+              {loading ? 'Loading...' : data.length === 0 ? 'No tests yet' : `${data.length} Test${data.length === 1 ? '' : 's'} Recorded`}
+            </div>
+            <div style={{ display: 'flex', gap: '0.45rem' }}>
+              {[
+                { val: loading ? '—' : plantedCrops.filter(c => c.status === 'active').length, lbl: 'Active Crops' },
+                { val: loading ? '—' : data.length, lbl: 'Past Tests' },
+                { val: loading ? '—' : `${avgConfidence}%`, lbl: 'Avg Confidence' },
+              ].map(({ val, lbl }) => (
+                <div key={lbl} style={{ flex: 1, background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(12px)', borderRadius: '12px', padding: '0.55rem 0.4rem', textAlign: 'center' }}>
+                  <div style={{ fontSize: '1rem', fontWeight: 900, color: '#fff' }}>{val}</div>
+                  <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.7)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', lineHeight: 1.3, marginTop: '0.1rem' }}>{lbl}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Scrollable cards below fixed hero */}
+        <div style={{ paddingTop: '165px', padding: '165px 1rem 0', paddingBottom: 'calc(100px + env(safe-area-inset-bottom))' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+
+          {loading ? (
+            [1,2,3].map(i => (
+              <div key={i} className="skeleton-card skeleton-shimmer" style={{ height: 100, borderRadius: 20 }} />
+            ))
+          ) : (
+            <>
+              {/* Radar chart */}
+              <div style={{ background: '#fff', borderRadius: '20px', padding: '1.1rem', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#0f172a' }}>Nutrient Equilibrium</div>
+                  <span style={{ fontSize: '0.62rem', fontWeight: 700, color: '#64748b', background: '#f1f5f9', borderRadius: '99px', padding: '0.2rem 0.6rem' }}>Global Avg</span>
+                </div>
+                <div style={{ height: 220 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
+                      <PolarGrid stroke="rgba(0,0,0,0.06)" />
+                      <PolarAngleAxis dataKey="subject" tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 600 }} />
+                      <Radar name="Soil Index" dataKey="A" stroke="#2d5240" fill="#2d5240" fillOpacity={0.18} strokeWidth={2} />
+                      <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 8px 24px rgba(0,0,0,0.1)', fontSize: '0.75rem' }} />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Insights */}
+              <div style={{ background: '#fff', borderRadius: '20px', padding: '1.1rem', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#0f172a' }}>Agronomic Insights</div>
+                  <span style={{ fontSize: '0.62rem', fontWeight: 700, color: '#8b5cf6', background: '#ede9fe', borderRadius: '99px', padding: '0.2rem 0.6rem' }}>AI Analysis</span>
+                </div>
+                {computedInsights.length === 0 ? (
+                  <div style={{ background: '#f0fdf4', borderRadius: '14px', padding: '1.25rem', textAlign: 'center', border: '1px dashed rgba(16,185,129,0.25)' }}>
+                    <p style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600, margin: 0 }}>Run at least 2 soil tests to see AI-computed insights here.</p>
+                  </div>
+                ) : (
+                  computedInsights.map((ins, i) => (
+                    <div key={i} style={{ display: 'flex', gap: '0.75rem', padding: '0.75rem', background: ins.type === 'success' ? '#f0fdf4' : '#fef3c7', borderRadius: '14px', marginBottom: i < computedInsights.length - 1 ? '0.5rem' : 0, border: `1px solid ${ins.type === 'success' ? '#bbf7d0' : '#fde68a'}` }}>
+                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: ins.type === 'success' ? '#dcfce7' : '#fef9c3', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {ins.icon === 'up' ? <TrendingUp size={14} color="#16a34a" /> : <TrendingDown size={14} color="#d97706" />}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '0.78rem', fontWeight: 800, color: ins.type === 'success' ? '#166534' : '#92400e', marginBottom: '0.2rem' }}>{ins.title}</div>
+                        <div style={{ fontSize: '0.72rem', color: ins.type === 'success' ? '#15803d' : '#b45309', lineHeight: 1.45 }}>{ins.body}</div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Audit log as cards */}
+              <div style={{ background: '#fff', borderRadius: '20px', padding: '1.1rem', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#0f172a' }}>Soil Audit Log</div>
+                  <span style={{ fontSize: '0.62rem', fontWeight: 700, color: '#64748b', background: '#f1f5f9', borderRadius: '99px', padding: '0.2rem 0.6rem' }}>{filteredData.length} records</span>
+                </div>
+                {filteredData.length === 0 ? (
+                  <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>
+                    <FileText size={32} style={{ opacity: 0.3, display: 'block', margin: '0 auto 0.5rem' }} />
+                    <p style={{ fontSize: '0.8rem', fontWeight: 600, margin: 0 }}>No soil tests yet</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                    {filteredData.map((item, idx) => (
+                      <div key={item.id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: '#f8fafc', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            <Leaf size={12} color="#059669" />
+                            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0f172a', textTransform: 'capitalize' }}>{item.predicted_crop}</span>
+                          </div>
+                          <div style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 600 }}>{formatDate(item.timestamp)}</div>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.3rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: item.confidence > 0.8 ? '#10b981' : '#f59e0b' }} />
+                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#0f172a' }}>{Math.round(item.confidence * 100)}%</span>
+                          </div>
+                          <div style={{ display: 'flex', gap: '0.25rem' }}>
+                            {[{l:'N',v:item.n,c:'#059669',bg:'rgba(16,185,129,0.1)'},{l:'P',v:item.p,c:'#d97706',bg:'rgba(245,158,11,0.1)'},{l:'K',v:item.k,c:'#2563eb',bg:'rgba(59,130,246,0.1)'}].map(({l,v,c,bg}) => (
+                              <span key={l} style={{ background: bg, color: c, padding: '0.15rem 0.35rem', borderRadius: '4px', fontSize: '0.6rem', fontWeight: 800 }}>{l}:{v}</span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Export button */}
+              <button onClick={exportCSV} style={{ width: '100%', background: '#1e362a', color: '#fff', border: 'none', borderRadius: '16px', padding: '1rem', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                <FileText size={16} /> Export as CSV
+              </button>
+            </>
+          )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="dashboard-view animate-2" style={{ paddingTop: 0 }}>
 

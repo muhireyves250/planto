@@ -1,63 +1,46 @@
 import React, { useState, lazy, Suspense } from 'react';
-import { useNavigate, useLocation, Routes, Route, Navigate } from 'react-router-dom';
+import { useNavigate, useLocation, Routes, Route, Navigate, Link } from 'react-router-dom';
 import LandingPage from './LandingPage';
 import AuthPage from './AuthPage';
 import ActiveCropsSummary from './components/dashboard/ActiveCropsSummary';
 import TodayActions from './components/dashboard/TodayActions';
+import MobileDashboard from './components/MobileDashboard';
+import MobileBottomNav from './components/MobileBottomNav';
 
-const Analytics = lazy(() => import('./Analytics'));
 const Reports = lazy(() => import('./Reports'));
 const Settings = lazy(() => import('./Settings'));
 const Monitoring = lazy(() => import('./pages/Monitoring'));
 const SoilTest = lazy(() => import('./pages/SoilTest'));
-const FarmManagement = lazy(() => import('./pages/FarmManagement'));
 import { monitoringApi } from './api/monitoringApi';
 import { farmApi, weatherApi, alertApi } from './api/farmApi';
 import { getCached, setCached } from './api/cache';
-import { 
+import {
   Search,
   Bell,
   MessageSquare,
   Leaf,
   CloudSun,
-  CloudRain,
   MapPin,
   Loader2,
   Droplets,
-  ThermometerSun,
   Sprout,
-  Plus,
   CheckCircle2,
   AlertTriangle,
-  Info,
-  FlaskConical,
   TrendingUp,
-  Map as MapIcon,
-  BarChart3,
   Layers,
   Activity,
-  Calendar,
-  Waves,
   Wand2,
-  Lightbulb,
   Zap,
-  Check,
   Wind,
-  ShieldCheck,
   LogOut,
-  ChevronRight,
   History,
   Settings as LucideSettings
 } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/predict` : 'http://127.0.0.1:8080/predict';
 
 function App() {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
-  const [envLoading, setEnvLoading] = useState(false);
-  const [envError, setEnvError] = useState(null);
   const [locationActive, setLocationActive] = useState(true);
   const [toast, setToast] = useState(null);
   const [alerts, setAlerts] = useState([]);
@@ -91,48 +74,26 @@ function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const activeTab = location.pathname === '/' ? 'dashboard' : location.pathname.replace('/', '');
-  const setActiveTab = (tab) => navigate(tab === 'dashboard' ? '/' : `/${tab}`);
-
-  const [showAuth, setShowAuth] = useState(false);
+  const activeTab = location.pathname.slice(1) || 'dashboard';
+  const setActiveTab = (tab) => navigate(`/${tab}`);
   const [headerActions, setHeaderActions] = useState(null);
   const [soilTestParams, setSoilTestParams] = useState({ mode: 'prediction', plantId: null, cropName: '' });
   const [weatherData, setWeatherData] = useState(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    n: '',
-    p: '',
-    k: '',
-    temperature: '',
-    humidity: '',
-    ph: '',
-    rainfall: ''
-  });
-  const [formErrors, setFormErrors] = useState({});
-  const [timestamp, setTimestamp] = useState(null);
 
   const handleLogout = () => {
     localStorage.removeItem('planto_user');
     setIsAuthenticated(false);
     setUser(null);
-    setShowAuth(false);
     setResult(null);
-    setActiveTab('dashboard');
+    navigate('/');
   };
 
   const onLoginSuccess = (userData) => {
     localStorage.setItem('planto_user', JSON.stringify(userData));
     setUser(userData);
     setIsAuthenticated(true);
-    
-    // Role-based redirection
-    if (userData.role === 'admin') {
-      setActiveTab('admin');
-    } else if (userData.role === 'agronomist') {
-      setActiveTab('agronomist');
-    } else {
-      setActiveTab('dashboard');
-    }
+    navigate('/dashboard');
   };
 
   const handlePlantCrop = async () => {
@@ -163,13 +124,13 @@ function App() {
           status: "pending",
           monitoring_data: [{
             recorded_at: new Date().toISOString(),
-            nitrogen: parseFloat(formData.n) || 120,
-            phosphorus: parseFloat(formData.p) || 60,
-            potassium: parseFloat(formData.k) || 40,
-            ph: parseFloat(formData.ph) || 6.5,
+            nitrogen: 120,
+            phosphorus: 60,
+            potassium: 40,
+            ph: 6.5,
             moisture: 75.0,
-            temperature: parseFloat(formData.temperature) || 24.0,
-            humidity: parseFloat(formData.humidity) || 62.0
+            temperature: 24.0,
+            humidity: 62.0
           }],
           health_history: [{
             id: "hist-1",
@@ -258,34 +219,100 @@ function App() {
       setLatestHealthScore(bestScore);
       setCached(cacheKey, { farmsCount: farmsData.length, cropsCount: cropsData.length, crops: cropsData, latestHealthScore: bestScore });
 
-      // Fire weather fetch without awaiting — it updates the card independently
+      // Weather: show cached immediately, refresh in background
       const firstFarm = farmsData[0];
-      const fetchWeather = async (lat, lng) => {
+      const cachedWeather = getCached('weather');
+      if (cachedWeather) {
+        setWeatherData(cachedWeather);
+        setWeatherFetchedAt(new Date(cachedWeather._ts || Date.now()));
+      } else {
         setWeatherLoading(true);
+      }
+
+      const fetchWeather = async (lat, lng) => {
         try {
           const data = await weatherApi.getWeather(lat, lng);
-          setWeatherData({
+          const w = {
             temp: Math.round(data.temp),
             condition: data.condition,
             humidity: data.humidity,
-            windSpeed: data.windSpeed,
+            windSpeed: data.wind_speed ?? null,
             rainfall: data.rainfall,
-          });
+            _ts: Date.now(),
+          };
+          setWeatherData(w);
           setWeatherFetchedAt(new Date());
+          setCached('weather', w);
         } catch {
-          // leave weatherData null — card shows "unavailable"
+          // leave weatherData as cached or null
         } finally {
           setWeatherLoading(false);
         }
       };
 
+      const geocodeLocation = async (locationText) => {
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationText)}&format=json&limit=1`,
+            { headers: { 'Accept-Language': 'en' } }
+          );
+          const results = await res.json();
+          if (results?.[0]) return { lat: parseFloat(results[0].lat), lng: parseFloat(results[0].lon) };
+        } catch {}
+        return null;
+      };
+
+      const ipGeoFallback = async () => {
+        try {
+          const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080';
+          const res = await fetch(`${BASE_URL}/weather/geoip`);
+          const d = await res.json();
+          if (d?.lat && d?.lng) fetchWeather(d.lat, d.lng);
+          else setWeatherLoading(false);
+        } catch { setWeatherLoading(false); }
+      };
+
       if (firstFarm?.location_lat && firstFarm?.location_lng) {
-        fetchWeather(firstFarm.location_lat, firstFarm.location_lng); // no await
+        // Priority 1: stored farm GPS coordinates
+        fetchWeather(firstFarm.location_lat, firstFarm.location_lng);
       } else if (navigator.geolocation) {
+        // Priority 2: live browser GPS — ask immediately
         navigator.geolocation.getCurrentPosition(
           (pos) => fetchWeather(pos.coords.latitude, pos.coords.longitude),
-          () => setWeatherLoading(false)
+          async () => {
+            // Denied/failed → Priority 3: farm_location text geocoding
+            const storedUser = (() => { try { return JSON.parse(localStorage.getItem('planto_user')); } catch { return null; } })();
+            const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080';
+            try {
+              const settingsRes = await fetch(`${BASE_URL}/settings/${storedUser?.id}`);
+              if (settingsRes.ok) {
+                const profile = await settingsRes.json();
+                if (profile?.farm_location) {
+                  const coords = await geocodeLocation(profile.farm_location);
+                  if (coords) { fetchWeather(coords.lat, coords.lng); return; }
+                }
+              }
+            } catch {}
+            // Priority 4: IP-based geolocation
+            await ipGeoFallback();
+          },
+          { timeout: 8000 }
         );
+      } else {
+        // No geolocation API → try farm_location then IP
+        const storedUser = (() => { try { return JSON.parse(localStorage.getItem('planto_user')); } catch { return null; } })();
+        const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080';
+        try {
+          const settingsRes = await fetch(`${BASE_URL}/settings/${storedUser?.id}`);
+          if (settingsRes.ok) {
+            const profile = await settingsRes.json();
+            if (profile?.farm_location) {
+              const coords = await geocodeLocation(profile.farm_location);
+              if (coords) { fetchWeather(coords.lat, coords.lng); return; }
+            }
+          }
+        } catch {}
+        await ipGeoFallback();
       }
     } catch (err) {
       console.error('Failed to fetch dashboard stats:', err);
@@ -310,134 +337,6 @@ function App() {
     setHeaderActions(null);
   }, [activeTab]);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    
-    if (formErrors[name]) {
-      setFormErrors(prev => ({ ...prev, [name]: null }));
-    }
-  };
-
-  const validateForm = () => {
-    let isValid = true;
-    let errors = {};
-    Object.keys(formData).forEach(key => {
-      if (formData[key] === '' || isNaN(formData[key])) {
-        errors[key] = 'Required';
-        isValid = false;
-      }
-    });
-    setFormErrors(errors);
-    return isValid;
-  };
-
-  const getAlerts = () => {
-    const alerts = [];
-    if (formData.n !== '' && parseFloat(formData.n) < 20) alerts.push("Low N");
-    if (formData.humidity !== '' && parseFloat(formData.humidity) > 85) alerts.push("High Humidity");
-    if (formData.ph !== '') {
-        const ph = parseFloat(formData.ph);
-        if (ph < 5.5 || ph > 7.5) alerts.push("pH out of range");
-    }
-    return alerts;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-    
-    setLoading(true);
-    setError(null);
-
-    const reqData = {
-      n: parseFloat(formData.n),
-      p: parseFloat(formData.p),
-      k: parseFloat(formData.k),
-      temperature: parseFloat(formData.temperature),
-      humidity: parseFloat(formData.humidity),
-      ph: parseFloat(formData.ph),
-      rainfall: parseFloat(formData.rainfall),
-    };
-
-    try {
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          ...(user?.access_token ? { 'Authorization': `Bearer ${user.access_token}` } : {})
-        },
-        body: JSON.stringify(reqData)
-      });
-
-      if (!response.ok) {
-        throw new Error(`Server Error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      setResult(data);
-      setTimestamp(new Date().toLocaleString());
-      setToast({ type: 'success', message: `Analysis complete! Recommended crop: ${data.crop}` });
-      setTimeout(() => setToast(null), 5000);
-    } catch (err) {
-        console.error('API Error:', err);
-        setError('Precision Link Offline: Ensure the VERA backend is active.');
-        setToast({ type: 'error', message: 'Analysis failed. System offline.' });
-        setTimeout(() => setToast(null), 5000);
-    } finally {
-        setLoading(false);
-    }
-  };
-
-  const handleAutoFetchEnv = () => {
-    if (!locationActive) {
-      setEnvError("Location services are currently turned off in your sidebar.");
-      return;
-    }
-    if (!navigator.geolocation) {
-      setEnvError("Geolocation is not supported by your browser.");
-      return;
-    }
-
-    setEnvLoading(true);
-    setEnvError(null);
-
-    navigator.geolocation.getCurrentPosition(async (position) => {
-      const { latitude, longitude } = position.coords;
-      
-      try {
-        const data = await weatherApi.getWeather(latitude, longitude);
-        
-        setFormData(prev => ({
-          ...prev,
-          temperature: data.temp,
-          humidity: data.humidity,
-          rainfall: data.rainfall
-        }));
-        
-        setWeatherData({
-          temp: Math.round(data.temp),
-          condition: data.condition,
-          humidity: data.humidity
-        });
-        
-        setFormErrors(prev => ({ ...prev, temperature: null, humidity: null, rainfall: null }));
-
-      } catch (err) {
-        console.error('Weather API Error:', err);
-        setEnvError(err.message);
-      } finally {
-        setEnvLoading(false);
-      }
-    }, (err) => {
-      console.error('Geolocation Error:', err);
-      setEnvError("Could not retrieve GPS location.");
-      setEnvLoading(false);
-    });
-  };
-
-  const currentAlerts = getAlerts();
-  
   const today = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
 
   const getHeaderInfo = () => {
@@ -500,15 +399,13 @@ function App() {
   const headerInfo = getHeaderInfo();
 
   if (!isAuthenticated) {
-    if (showAuth) {
-      return (
-        <AuthPage 
-          onLogin={onLoginSuccess} 
-          onBack={() => setShowAuth(false)} 
-        />
-      );
-    }
-    return <LandingPage onLogin={() => setShowAuth(true)} />;
+    return (
+      <Routes>
+        <Route path="/login" element={<AuthPage onLogin={onLoginSuccess} onBack={() => navigate('/')} />} />
+        <Route path="/signup" element={<AuthPage initialIsLogin={false} onLogin={onLoginSuccess} onBack={() => navigate('/')} />} />
+        <Route path="*" element={<LandingPage onLogin={() => navigate('/login')} onSignup={() => navigate('/signup')} />} />
+      </Routes>
+    );
   }
 
   return (
@@ -526,11 +423,11 @@ function App() {
           <div className="nav-links">
             {(user?.role === 'farmer' || user?.role === 'agronomist' || user?.role === 'admin') && (
               <>
-                <div className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>Home</div>
-                {user?.role === 'farmer' && <div className={`nav-item ${activeTab === 'soil-test' ? 'active' : ''}`} onClick={() => setActiveTab('soil-test')}>Soil Test</div>}
-                <div className={`nav-item ${activeTab === 'monitoring' ? 'active' : ''}`} onClick={() => setActiveTab('monitoring')}>Monitoring</div>
-                <div className={`nav-item ${activeTab === 'crop-status' ? 'active' : ''}`} onClick={() => setActiveTab('crop-status')}>Crop Status</div>
-                <div className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>Settings</div>
+                <Link to="/dashboard" className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}>Home</Link>
+                {user?.role === 'farmer' && <Link to="/soil-test" className={`nav-item ${activeTab === 'soil-test' ? 'active' : ''}`}>Soil Test</Link>}
+                <Link to="/monitoring" className={`nav-item ${activeTab === 'monitoring' ? 'active' : ''}`}>Monitoring</Link>
+                <Link to="/crop-status" className={`nav-item ${activeTab === 'crop-status' ? 'active' : ''}`}>Crop Status</Link>
+                <Link to="/settings" className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`}>Settings</Link>
               </>
             )}
           </div>
@@ -595,7 +492,16 @@ function App() {
               />
             } />
             <Route path="/settings" element={<Settings user={user} setUser={setUser} setHeaderActions={setHeaderActions} />} />
-            <Route path="/" element={(() => {
+<Route path="/dashboard" element={(() => {
+              if (window.innerWidth <= 768) return (
+                <MobileDashboard
+                  user={user} crops={crops}
+                  farmsCount={farmsCount} cropsCount={cropsCount}
+                  alerts={alerts} latestHealthScore={latestHealthScore}
+                  weatherData={weatherData} weatherLoading={weatherLoading}
+                />
+              );
+
               const hour = new Date().getHours();
               const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
               const firstName = user?.full_name?.split(' ')[0] || 'Farmer';
@@ -775,7 +681,8 @@ function App() {
             </div>
               );
             })()} />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
           </Suspense>
         </div>
@@ -953,6 +860,7 @@ function App() {
           to { transform: translateY(0); opacity: 1; }
         }
       `}</style>
+      <MobileBottomNav />
     </div>
   );
 }

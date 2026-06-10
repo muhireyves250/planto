@@ -1,8 +1,22 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Request
 from app.services.weather.weather_service import weather_service
-from typing import Optional
+import httpx
 
 router = APIRouter(prefix="/weather", tags=["Weather Intelligence"])
+
+@router.get("/geoip")
+async def get_geoip(request: Request):
+    """Server-side IP geolocation — avoids CORS issues from the browser."""
+    client_ip = request.headers.get("X-Forwarded-For", request.client.host).split(",")[0].strip()
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            res = await client.get(f"https://ipapi.co/{client_ip}/json/")
+            d = res.json()
+            if d.get("latitude") and d.get("longitude"):
+                return {"lat": d["latitude"], "lng": d["longitude"]}
+    except Exception:
+        pass
+    return {"lat": None, "lng": None}
 
 @router.get("/")
 async def get_farm_weather(lat: float, lon: float):
@@ -14,11 +28,7 @@ async def get_farm_weather(lat: float, lon: float):
             "humidity": 65,
             "rainfall": 0.2,
             "condition": "Cloudy",
-            "forecast": [
-                {"day": "Mon", "temp": 25, "condition": "Sunny"},
-                {"day": "Tue", "temp": 23, "condition": "Rainy"},
-                {"day": "Wed", "temp": 24, "condition": "Cloudy"}
-            ],
+            "wind_speed": 12.0,
             "is_mock": True
         }
     
@@ -27,5 +37,6 @@ async def get_farm_weather(lat: float, lon: float):
         "humidity": weather["main"]["humidity"],
         "rainfall": weather.get("rain", {}).get("1h", 0),
         "condition": weather["weather"][0]["main"],
+        "wind_speed": round(weather.get("wind", {}).get("speed", 0) * 3.6, 1),
         "is_mock": False
     }
