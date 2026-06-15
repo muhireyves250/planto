@@ -15,3 +15,8 @@ requests
 email-validator
 paho-mqtt
 httpx
+pywebpush
+aiosmtplib
+jinja2
+pytest
+pytest-asyncio
