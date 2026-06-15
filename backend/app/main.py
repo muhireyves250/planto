@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import engine, Base
-from app.routes import auth, prediction, monitoring, fertilizer, farm, weather, alert, sensor
+from app.routes import auth, prediction, monitoring, fertilizer, farm, weather, alert, sensor, agronomist
 from app.services.mqtt_service import start_mqtt_client
 
 logger = logging.getLogger(__name__)
@@ -49,6 +49,7 @@ app.include_router(farm.router)
 app.include_router(weather.router)
 app.include_router(alert.router)
 app.include_router(sensor.router)
+app.include_router(agronomist.router)
 
 @app.get("/")
 async def root():

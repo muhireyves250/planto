@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Loader2, AlertTriangle, Sprout, Activity, FlaskConical, TrendingUp, Zap, Clock, Bell, CheckCircle2, MapPin, Droplets, Wind } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
+import { AlertTriangle, Sprout, Activity, FlaskConical, Zap, Clock, Bell, CheckCircle2, MapPin, Droplets, Trash2 } from 'lucide-react';
 import { monitoringApi } from '../api/monitoringApi';
 import { alertApi } from '../api/farmApi';
 import { getCached, setCached } from '../api/cache';
@@ -19,6 +20,7 @@ const Monitoring = ({ user, setActiveTab, setSoilTestParams, setHeaderActions })
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [contentKey, setContentKey] = useState(0);
+  const [deleteConfirm, setDeleteConfirm] = useState(null); // crop object to confirm delete
 
   const loadData = async () => {
     try {
@@ -118,6 +120,29 @@ const Monitoring = ({ user, setActiveTab, setSoilTestParams, setHeaderActions })
       await loadData();
     } catch (err) {
       console.error('Failed to decline crop:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirm) return;
+    const plantId = deleteConfirm.id;
+    setDeleteConfirm(null);
+    try {
+      setLoading(true);
+      if (user?.id) {
+        await monitoringApi.deleteCrop(plantId);
+      } else {
+        const guestCrops = JSON.parse(localStorage.getItem('planto_guest_crops')) || [];
+        localStorage.setItem('planto_guest_crops', JSON.stringify(
+          guestCrops.filter(c => c.id !== plantId)
+        ));
+      }
+      if (setSoilTestParams) setSoilTestParams({ mode: 'prediction', plantId: null, cropName: '' });
+      await loadData();
+    } catch (err) {
+      console.error('Failed to delete crop:', err);
     } finally {
       setLoading(false);
     }
@@ -452,10 +477,11 @@ const Monitoring = ({ user, setActiveTab, setSoilTestParams, setHeaderActions })
       <div className="dashboard-grid-matching animate-3">
         <div className="dashboard-col">
           {/* Crop selector — shown when multiple crops planted */}
+          {/* Crop selector — shown when multiple crops planted */}
           {plantedCrops.length > 1 && (
             <div style={{ display: 'flex', gap: '0.75rem', overflowX: 'auto', paddingBottom: '1rem', marginBottom: '0.5rem' }}>
               {plantedCrops.map(crop => (
-                <div key={crop.id} onClick={() => setSelectedCrop(crop)} style={{ padding: '0.6rem 1.1rem', borderRadius: '99px', background: selectedCrop?.id === crop.id ? 'var(--bg-sidebar)' : '#f1f5f9', color: selectedCrop?.id === crop.id ? 'white' : '#475569', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>
+                <div key={crop.id} onClick={() => setSelectedCrop(crop)} style={{ padding: '0.6rem 1.1rem', borderRadius: '99px', background: selectedCrop?.id === crop.id ? 'var(--bg-sidebar)' : '#f1f5f9', color: selectedCrop?.id === crop.id ? 'white' : '#475569', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', flexShrink: 0 }}>
                   <Sprout size={14} /> <span style={{ textTransform: 'capitalize' }}>{crop.crop_name}</span>
                 </div>
               ))}
@@ -464,7 +490,16 @@ const Monitoring = ({ user, setActiveTab, setSoilTestParams, setHeaderActions })
 
           {/* Crop hero — mirrors "Weather Today" glass card */}
           <div className="dashboard-card matching-card glass-morph">
-            <div className="card-header-simple"><h3><Sprout size={20} color="var(--accent-emerald)" /> Crop Performance</h3></div>
+            <div className="card-header-simple" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <h3><Sprout size={20} color="var(--accent-emerald)" /> Crop Performance</h3>
+              <button
+                onClick={() => setDeleteConfirm(selectedCrop)}
+                title="Delete this crop"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.85rem', borderRadius: '99px', border: '1.5px solid #fca5a5', background: '#fff1f2', color: '#ef4444', fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer', flexShrink: 0 }}
+              >
+                <Trash2 size={13} /> Delete Crop
+              </button>
+            </div>
             <CropHeroCard crop={selectedCrop} cropAge={cropAge} latestHealth={latestHealth} />
           </div>
 
@@ -528,7 +563,7 @@ const Monitoring = ({ user, setActiveTab, setSoilTestParams, setHeaderActions })
           </div>
           <div style={{ background: healthBg, color: healthColor, borderRadius: '99px', padding: '0.28rem 0.8rem', fontSize: '0.65rem', fontWeight: 800, flexShrink: 0 }}>{healthLabel.toUpperCase()}</div>
         </div>
-        <div style={{ display: 'flex', gap: '0.45rem' }}>
+        <div style={{ display: 'flex', gap: '0.45rem', marginBottom: '0.5rem' }}>
           {[
             { val: `${healthScore}${healthScore !== '--' ? '%' : ''}`, lbl: 'Health' },
             { val: cropAge, lbl: 'Days' },
@@ -541,6 +576,12 @@ const Monitoring = ({ user, setActiveTab, setSoilTestParams, setHeaderActions })
             </div>
           ))}
         </div>
+        <button
+          onClick={() => setDeleteConfirm(selectedCrop)}
+          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.35)', color: '#fca5a5', borderRadius: '10px', padding: '0.5rem', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}
+        >
+          <Trash2 size={13} /> Delete Crop & Start Again
+        </button>
       </div>
     ) : (
       <div style={{ background: 'linear-gradient(135deg,#1e362a 0%,#2d5240 100%)', padding: '1.1rem 1rem' }}>
@@ -565,6 +606,39 @@ const Monitoring = ({ user, setActiveTab, setSoilTestParams, setHeaderActions })
             {renderMobileContent()}
           </div>
         </div>
+
+        {deleteConfirm && ReactDOM.createPortal(
+          <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
+            <div style={{ background: '#fff', borderRadius: '24px', width: '100%', maxWidth: '420px', padding: '2rem 1.5rem 1.5rem', boxShadow: '0 24px 60px rgba(0,0,0,0.2)', animation: 'slideUpModal 0.22s cubic-bezier(0.34,1.56,0.64,1)' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', marginBottom: '1.75rem' }}>
+                <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#fff1f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Trash2 size={24} color="#e11d48" />
+                </div>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', fontFamily: 'var(--font-heading)' }}>
+                  Delete <span style={{ textTransform: 'capitalize' }}>{deleteConfirm.crop_name}</span>?
+                </h3>
+                <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b', textAlign: 'center', fontFamily: 'var(--font-body)', lineHeight: 1.6 }}>
+                  This crop will be removed from your monitoring list. You can always run a new soil test and start again.
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button
+                  onClick={() => setDeleteConfirm(null)}
+                  style={{ flex: 1, padding: '0.85rem', borderRadius: '14px', border: '2px solid #e2e8f0', background: '#fff', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer', color: '#64748b', fontFamily: 'var(--font-body)' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmDelete}
+                  style={{ flex: 1, padding: '0.85rem', borderRadius: '14px', border: 'none', background: 'linear-gradient(135deg, #e11d48, #be123c)', color: '#fff', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer', fontFamily: 'var(--font-body)' }}
+                >
+                  Yes, Delete
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
       </div>
     );
   }
@@ -633,6 +707,39 @@ const Monitoring = ({ user, setActiveTab, setSoilTestParams, setHeaderActions })
       <div key={contentKey}>
         {renderMainContent()}
       </div>
+
+      {deleteConfirm && ReactDOM.createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
+          <div style={{ background: '#fff', borderRadius: '24px', width: '100%', maxWidth: '420px', padding: '2rem 1.5rem 1.5rem', boxShadow: '0 24px 60px rgba(0,0,0,0.2)', animation: 'slideUpModal 0.22s cubic-bezier(0.34,1.56,0.64,1)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', marginBottom: '1.75rem' }}>
+              <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#fff1f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Trash2 size={24} color="#e11d48" />
+              </div>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', fontFamily: 'var(--font-heading)' }}>
+                Delete <span style={{ textTransform: 'capitalize' }}>{deleteConfirm.crop_name}</span>?
+              </h3>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b', textAlign: 'center', fontFamily: 'var(--font-body)', lineHeight: 1.6 }}>
+                This crop will be removed from your monitoring list. You can always run a new soil test and start again.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                style={{ flex: 1, padding: '0.85rem', borderRadius: '14px', border: '2px solid #e2e8f0', background: '#fff', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer', color: '#64748b', fontFamily: 'var(--font-body)' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                style={{ flex: 1, padding: '0.85rem', borderRadius: '14px', border: 'none', background: 'linear-gradient(135deg, #e11d48, #be123c)', color: '#fff', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer', fontFamily: 'var(--font-body)' }}
+              >
+                Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

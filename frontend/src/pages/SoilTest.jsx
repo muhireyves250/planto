@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   FlaskConical,
   Leaf,
@@ -17,6 +18,7 @@ import {
 import { weatherApi } from '../api/farmApi';
 import { monitoringApi } from '../api/monitoringApi';
 import { sensorApi } from '../api/sensorApi';
+import { agronomistApi } from '../api/agronomistApi';
 import SoilTestResult from './SoilTestResult';
 
 const API_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/predict` : 'http://127.0.0.1:8080/predict';
@@ -106,8 +108,24 @@ const SoilTest = ({
   const [error, setError] = useState(null);
   const [envLoading, setEnvLoading] = useState(false);
   const [envError, setEnvError] = useState(null);
-  // Monitoring result state after submission
   const [monitoringResult, setMonitoringResult] = useState(null);
+
+  // Agronomist: managed farms + selected farm
+  const [searchParams] = useSearchParams();
+  const [managedFarms, setManagedFarms] = useState([]);
+  const [selectedFarmId, setSelectedFarmId] = useState('');
+
+  useEffect(() => {
+    if (user?.role === 'agronomist') {
+      agronomistApi.getFarms().then(farms => {
+        setManagedFarms(farms || []);
+        const urlFarmId = searchParams.get('farm_id');
+        if (urlFarmId && farms?.some(f => f.farm_id === urlFarmId)) {
+          setSelectedFarmId(urlFarmId);
+        }
+      }).catch(() => {});
+    }
+  }, [user?.role]);
 
   const [formData, setFormData] = useState({
     n: '',
@@ -347,9 +365,13 @@ const SoilTest = ({
           rainfall: parseFloat(formData.rainfall),
         };
 
-        const response = await fetch(API_URL, {
+        const predUrl = selectedFarmId
+          ? `${API_URL}?farm_id=${selectedFarmId}`
+          : API_URL;
+
+        const response = await fetch(predUrl, {
           method: 'POST',
-          headers: { 
+          headers: {
             'Content-Type': 'application/json',
             ...(user?.access_token ? { 'Authorization': `Bearer ${user.access_token}` } : {})
           },
@@ -496,8 +518,50 @@ const SoilTest = ({
             </div>
           </div>
 
+          {/* Agronomist: farm selector */}
+          {user?.role === 'agronomist' && !isMonitoring && (
+            <div style={{ marginBottom: '1.25rem' }} className="animate-2">
+              <div style={{ background: '#fff', borderRadius: '16px', border: '1.5px solid #e2e8f0', padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                <div style={{ width: 40, height: 40, borderRadius: '12px', background: 'var(--green-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <MapPin size={18} color="#10b981" />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.35rem' }}>
+                    Testing Soil For
+                  </div>
+                  <select
+                    value={selectedFarmId}
+                    onChange={e => setSelectedFarmId(e.target.value)}
+                    style={{ width: '100%', border: 'none', outline: 'none', fontSize: '0.9rem', fontWeight: 700, color: selectedFarmId ? '#0f172a' : '#94a3b8', fontFamily: 'var(--font-body)', background: 'transparent', cursor: 'pointer' }}
+                  >
+                    <option value="">Select a farmer's land...</option>
+                    {managedFarms.map(f => (
+                      <option key={f.farm_id} value={f.farm_id}>
+                        {f.farm_name} — {f.farmer_name || 'Unknown farmer'}{f.location ? ` · ${f.location}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {selectedFarmId && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedFarmId('')}
+                    style={{ flexShrink: 0, background: '#f1f5f9', border: 'none', borderRadius: '8px', padding: '0.35rem 0.6rem', fontSize: '0.72rem', fontWeight: 700, color: '#64748b', cursor: 'pointer' }}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              {!selectedFarmId && (
+                <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '0.4rem', paddingLeft: '0.25rem' }}>
+                  Select a farm above to link this soil test to that farmer's record.
+                </div>
+              )}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="widgets-grid animate-3">
-            
+
             {/* Left card: Weather (prediction) or Crop Context (monitoring) */}
             {isMonitoring ? (
               <div className="widget weather-widget">

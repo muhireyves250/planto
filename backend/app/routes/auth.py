@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from sqlalchemy.orm import Session
 import random
 import httpx
@@ -18,13 +18,16 @@ router = APIRouter(tags=["Authentication"])
 # In-memory OTP store for the prototype
 otp_store = {}
 
+# Reusable httpx client — avoids TCP handshake overhead per Google login
+_http_client = httpx.AsyncClient(timeout=10.0)
+
 def send_otp_email(to_email: str, otp: str):
     print(f"--- OTP FOR {to_email}: {otp} ---")
-    
+
     if not settings.SMTP_EMAIL or not settings.SMTP_PASSWORD:
         print("SMTP credentials not configured. OTP printed to console only.")
         return True
-        
+
     try:
         msg = MIMEText(f"Your Planto verification code is: {otp}\n\nThis code will expire in 10 minutes.")
         msg['Subject'] = 'Planto - Verification Code'
@@ -40,35 +43,48 @@ def send_otp_email(to_email: str, otp: str):
         print(f"Failed to send email: {e}")
         return False
 
-@router.post("/register", response_model=auth_schemas.UserDB)
+@router.post("/register")
 async def register(user: auth_schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = user_repo.get_user_by_email(db, email=user.email)
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
-    return user_repo.create_user(db=db, user=user)
+    db_user = user_repo.create_user(db=db, user=user)
+    access_token = create_access_token(data={
+        "sub": db_user.email,
+        "role": db_user.role,
+        "user_id": str(db_user.id)
+    })
+    return {
+        "success": True,
+        "access_token": access_token,
+        "user": {
+            "id": str(db_user.id),
+            "email": db_user.email,
+            "full_name": db_user.full_name,
+            "role": db_user.role
+        }
+    }
 
 @router.post("/login")
-async def login(user: auth_schemas.UserLogin, db: Session = Depends(get_db)):
+async def login(user: auth_schemas.UserLogin, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     db_user = user_repo.get_user_by_email(db, email=user.email)
     if not db_user or not verify_password(user.password, db_user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid email or password")
-    
-    # Role restriction: Email registered for one role cannot be used for other role
+
     if db_user.role != user.role:
         raise HTTPException(
-            status_code=401, 
+            status_code=401,
             detail=f"This account is registered as a {db_user.role}. Please select the correct role."
         )
-    
-    # GENERATE OTP
+
     otp = str(random.randint(100000, 999999))
     otp_store[db_user.email] = otp
-    
-    # SEND OTP
-    send_otp_email(db_user.email, otp)
-    
+
+    # Send email in background — response returns immediately, no SMTP wait
+    background_tasks.add_task(send_otp_email, db_user.email, otp)
+
     return {
-        "success": True, 
+        "success": True,
         "requires_otp": True,
         "email": db_user.email
     }
@@ -121,24 +137,18 @@ async def google_auth(data: dict, db: Session = Depends(get_db)):
         )
     
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(f"https://www.googleapis.com/oauth2/v3/userinfo?access_token={token}")
+        response = await _http_client.get(f"https://www.googleapis.com/oauth2/v3/userinfo?access_token={token}")
         if not response.is_success:
             raise HTTPException(status_code=401, detail="Invalid Google token")
-        
+
         user_info = response.json()
         email = user_info.get("email")
         full_name = user_info.get("name")
-        
+
         db_user = user_repo.get_user_by_email(db, email=email)
         if not db_user:
-            user_create = auth_schemas.UserCreate(
-                email=email,
-                full_name=full_name,
-                password=str(random.getrandbits(128)),
-                role=requested_role
-            )
-            db_user = user_repo.create_user(db=db, user=user_create)
+            # Skip bcrypt for OAuth users — they have no password to hash
+            db_user = user_repo.create_google_user(db=db, email=email, full_name=full_name, role=requested_role)
         
         # Restriction: Admin and Agronomist cannot login with Google (DB role check)
         if db_user.role in ["admin", "agronomist"]:
@@ -169,15 +179,16 @@ async def google_auth(data: dict, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Google Auth Error: {str(e)}")
 
 @router.post("/forgot-password")
-async def forgot_password(data: dict, db: Session = Depends(get_db)):
+async def forgot_password(data: dict, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     email = data.get("email")
     db_user = user_repo.get_user_by_email(db, email=email)
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
-        
+
     otp = str(random.randint(100000, 999999))
     otp_store[email] = otp
-    send_otp_email(email, otp)
+
+    background_tasks.add_task(send_otp_email, email, otp)
     return {"success": True, "message": "Reset code sent to your email"}
 
 @router.post("/reset-password")

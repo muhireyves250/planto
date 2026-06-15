@@ -3,20 +3,24 @@ import { X, Smartphone } from 'lucide-react';
 
 export default function InstallPrompt() {
   const [prompt, setPrompt] = useState(null);
-  const [visible, setVisible] = useState(false);
-  const [installed, setInstalled] = useState(false);
+  const [visible, setVisible] = useState(() => {
+    // Compute initial visibility synchronously — no flicker
+    if (typeof window === 'undefined') return false;
+    if (window.matchMedia('(display-mode: standalone)').matches) return false;
+    if (sessionStorage.getItem('install_dismissed')) return false;
+    return true;
+  });
 
   useEffect(() => {
-    if (window.matchMedia('(display-mode: standalone)').matches) return;
+    if (!visible) return;
 
     const handler = (e) => {
       e.preventDefault();
       setPrompt(e);
-      setVisible(true);
     };
 
     window.addEventListener('beforeinstallprompt', handler);
-    window.addEventListener('appinstalled', () => { setInstalled(true); setVisible(false); });
+    window.addEventListener('appinstalled', () => setVisible(false));
 
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
@@ -25,103 +29,103 @@ export default function InstallPrompt() {
     if (!prompt) return;
     prompt.prompt();
     const { outcome } = await prompt.userChoice;
-    if (outcome === 'accepted') setInstalled(true);
-    setVisible(false);
+    if (outcome === 'accepted') setVisible(false);
     setPrompt(null);
   };
 
-  if (installed || !visible) return null;
+  const handleDismiss = () => {
+    sessionStorage.setItem('install_dismissed', '1');
+    setVisible(false);
+  };
+
+  if (!visible) return null;
 
   return (
     <>
       <style>{`
-        @keyframes slideBannerDown {
-          from { transform: translateY(-100%); opacity: 0; }
-          to   { transform: translateY(0);     opacity: 1; }
+        @keyframes slideUpCard {
+          from { transform: translateY(20px); opacity: 0; }
+          to   { transform: translateY(0);    opacity: 1; }
         }
-        .install-banner { animation: slideBannerDown 0.35s cubic-bezier(0.4,0,0.2,1) forwards; }
-        .install-btn:hover { background: #059669 !important; transform: scale(1.03); }
-        .install-btn { transition: background 0.2s, transform 0.15s; }
+        .install-card { animation: slideUpCard 0.3s cubic-bezier(0.4,0,0.2,1) forwards; }
+        .install-card-btn:hover { background: #059669 !important; }
+        .install-card-btn { transition: background 0.18s; }
       `}</style>
 
-      <div className="install-banner" style={{
+      <div className="install-card" style={{
         position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
+        bottom: '88px',
+        right: '24px',
         zIndex: 10000,
-        background: 'linear-gradient(90deg, #1e362a 0%, #2d5240 100%)',
-        borderBottom: '1px solid rgba(16,185,129,0.3)',
-        padding: '0.65rem 1.5rem',
+        background: 'linear-gradient(135deg, #1e362a 0%, #2d5240 100%)',
+        border: '1px solid rgba(16,185,129,0.28)',
+        borderRadius: '18px',
+        padding: '14px 16px',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center',
-        gap: '1rem',
-        boxShadow: '0 4px 24px rgba(0,0,0,0.25)',
+        gap: '12px',
+        boxShadow: '0 10px 32px rgba(0,0,0,0.35)',
+        width: '280px',
       }}>
-        {/* Icon */}
+        {/* App icon */}
         <div style={{
-          width: '32px', height: '32px', borderRadius: '8px',
+          width: '44px', height: '44px', borderRadius: '11px',
           overflow: 'hidden', flexShrink: 0,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.3)',
         }}>
           <img src="/pwa-64x64.png" alt="Planto" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         </div>
 
-        {/* Text */}
-        <div style={{ color: 'white', lineHeight: 1.3 }}>
-          <span style={{ fontWeight: 700, fontSize: '0.875rem' }}>Install Planto</span>
-          <span style={{ opacity: 0.65, fontSize: '0.78rem', marginLeft: '0.5rem', display: 'inline' }}>
-            — Add to home screen for quick access
-          </span>
+        {/* Text + button */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ color: 'white', fontWeight: 700, fontSize: '0.88rem', lineHeight: 1.2 }}>
+            Install Planto
+          </div>
+          <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.75rem', lineHeight: 1.4, marginBottom: '9px' }}>
+            Add to home screen for quick access
+          </div>
+          <button
+            className="install-card-btn"
+            onClick={handleInstall}
+            disabled={!prompt}
+            style={{
+              background: prompt ? '#10b981' : 'rgba(16,185,129,0.45)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '6px 14px',
+              fontWeight: 700,
+              fontSize: '0.8rem',
+              cursor: prompt ? 'pointer' : 'default',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+            }}
+          >
+            <Smartphone size={13} />
+            Install
+          </button>
         </div>
-
-        {/* Install button */}
-        <button
-          className="install-btn"
-          onClick={handleInstall}
-          style={{
-            background: '#10b981',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            padding: '0.45rem 1.1rem',
-            fontWeight: 700,
-            fontSize: '0.82rem',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.4rem',
-            flexShrink: 0,
-            boxShadow: '0 2px 8px rgba(16,185,129,0.4)',
-          }}
-        >
-          <Smartphone size={14} />
-          Install
-        </button>
 
         {/* Dismiss */}
         <button
-          onClick={() => setVisible(false)}
+          onClick={handleDismiss}
           style={{
-            position: 'absolute',
-            right: '1rem',
+            alignSelf: 'flex-start',
             background: 'transparent',
             border: 'none',
-            color: 'rgba(255,255,255,0.45)',
+            color: 'rgba(255,255,255,0.4)',
             cursor: 'pointer',
-            padding: '0.25rem',
+            padding: '0',
             lineHeight: 1,
             display: 'flex',
+            flexShrink: 0,
           }}
           aria-label="Dismiss"
         >
-          <X size={16} />
+          <X size={15} />
         </button>
       </div>
-
-      {/* Spacer so page content isn't hidden behind the banner */}
-      <div style={{ height: '52px' }} />
     </>
   );
 }

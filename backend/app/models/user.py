@@ -22,7 +22,9 @@ class User(Base):
     # Relationships
     profile = relationship("UserProfile", back_populates="user", uselist=False)
     sessions = relationship("AuthSession", back_populates="user")
-    farms = relationship("Farm", back_populates="owner")
+    farms = relationship("Farm", foreign_keys="Farm.owner_id", back_populates="owner")
+    managed_farms = relationship("Farm", foreign_keys="Farm.agronomist_id", back_populates="agronomist")
+    managed_farmers = relationship("ManagedFarmer", foreign_keys="ManagedFarmer.agronomist_id", back_populates="agronomist")
 
 class UserProfile(Base):
     __tablename__ = "user_profiles"

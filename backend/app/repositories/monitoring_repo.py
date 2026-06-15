@@ -4,8 +4,8 @@ from app.models.planted_crop import PlantedCrop
 from app.models.soil_monitoring import SoilMonitoring
 from app.schemas.monitoring import MonitoringCreate
 
-def create_planted_crop(db: Session, user_id: UUID, crop_name: str, status: str = "pending"):
-    db_crop = PlantedCrop(user_id=user_id, crop_name=crop_name, status=status)
+def create_planted_crop(db: Session, user_id: UUID, crop_name: str, status: str = "pending", farm_id: UUID = None):
+    db_crop = PlantedCrop(user_id=user_id, crop_name=crop_name, status=status, farm_id=farm_id)
     db.add(db_crop)
     db.commit()
     db.refresh(db_crop)

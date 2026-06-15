@@ -125,15 +125,24 @@
 }
 
 .form-header h1 {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #1e293b;
+  font-size: 2.15rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #0f172a 0%, #1e362a 55%, #10b981 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   margin-bottom: 0.5rem;
+  text-align: center;
+  letter-spacing: -0.5px;
+  line-height: 1.15;
 }
 
 .form-header p {
   color: #64748b;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
+  text-align: center;
+  font-weight: 500;
+  letter-spacing: 0.01em;
 }
 
 .auth-error-alert {

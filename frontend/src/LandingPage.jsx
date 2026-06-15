@@ -1,19 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Leaf, 
-  ChevronDown, 
-  Search,
+import { useState, useEffect, useRef } from 'react';
+import {
+  Leaf,
   LayoutDashboard,
-  Map as MapIcon,
   Activity,
-  FileText,
-  ClipboardList,
-  Settings,
-  Droplets,
-  ThermometerSun,
-  Zap,
   ArrowRight,
-  Sprout,
   Play,
   ExternalLink,
   Star,
@@ -104,19 +94,19 @@ const LandingPage = ({ onLogin, onSignup }) => {
         {/* Hero Content */}
         <div className="hero-container">
           <div className="hero-badge">
-            <span className="badge-new">● New feature</span>
+            <span className="badge-new">● AI-Powered</span>
             <span className="badge-divider"></span>
-            <span className="badge-text">Check out the team dashboard <ArrowRight size={14} /></span>
+            <span className="badge-text">Precision soil analysis for every farm <ArrowRight size={14} /></span>
           </div>
-          
+
           <h1 className="hero-headline">
-            Revolutionizing Agriculture with <br/>
-            AI Crop Recommendations
+            Intelligent Crop Planning<br/>
+            for Every Farmer
           </h1>
-          
+
           <p className="hero-subheadline">
-            Analyze soil health, predict the best crops to plant, and maximize<br/>
-            your yield with Planto's intelligent recommendation engine.
+            Test your soil, receive AI-driven crop recommendations, and monitor<br/>
+            your farm's health  all in one professional platform built for farmers.
           </p>
           
           <div className="hero-cta">
@@ -148,11 +138,11 @@ const LandingPage = ({ onLogin, onSignup }) => {
           <div className="about-grid-3">
             {/* Left Column */}
             <div className="about-col col-left">
-              <span className="col-label">About us</span>
-              <h2 className="col-title">Cultivating Success with <br/> AI Precision</h2>
+              <span className="col-label">About Us</span>
+              <h2 className="col-title">Built for Farmers.<br/>Backed by Science.</h2>
               <p className="col-desc">
-                Planto was founded on a simple belief: crop planning shouldn't be a guessing game. 
-                We're committed to leveraging AI and soil data to provide precise crop recommendations, ensuring optimal yields and sustainable farming for everyone.
+                Planto was built on a straightforward principle: every farmer deserves access to reliable, data-driven guidance.
+                By combining soil science with artificial intelligence, we deliver accurate crop recommendations that help farmers make confident decisions every planting season.
               </p>
               
               <div className="bar-chart-card glass-effect">
@@ -187,7 +177,7 @@ const LandingPage = ({ onLogin, onSignup }) => {
               <div className="col-header-right">
                 <span className="col-num">01</span>
               </div>
-              <h3 className="col-side-title">Precision crop models deployed across 12+ regions</h3>
+              <h3 className="col-side-title">Soil-based crop guidance trusted by farmers across 12+ regions</h3>
               
               <div className="field-grid-card">
                 <img src="/precision_agriculture_about_us.png" alt="Field Grid" className="field-grid-image" />
@@ -222,13 +212,13 @@ const LandingPage = ({ onLogin, onSignup }) => {
             <div className="how-col">
               <h2 className="how-main-title">How Planto <br/> Works</h2>
               <div className="how-step-block">
-                <h3 className="how-step-title">Data <br/>Integration</h3>
+                <h3 className="how-step-title">Soil Data <br/>Collection</h3>
                 <div className="how-circle-wrapper small">
-                  <img src="/precision_agriculture_about_us.png" alt="Data Integration" className="how-circle-img" />
+                  <img src="/precision_agriculture_about_us.png" alt="Soil Data Collection" className="how-circle-img" />
                   <div className="how-badge-green b1">01</div>
                 </div>
                 <p className="how-desc-text">
-                  Collect essential soil parameters and environmental conditions seamlessly.
+                  IoT sensors deployed in the field automatically capture soil parameters   nitrogen, phosphorus, potassium, pH, moisture, temperature, and humidity   and transmit the data to Planto in real time.
                 </p>
               </div>
             </div>
@@ -240,9 +230,9 @@ const LandingPage = ({ onLogin, onSignup }) => {
                 <div className="how-badge-green b2">02</div>
               </div>
               <p className="how-desc-text center">
-                Analyze nutrient levels, moisture, and texture in real-time.
+                Our system evaluates your soil's nutrient balance, moisture retention, and acidity to determine its current health status.
               </p>
-              <h3 className="how-step-title center">Soil Health <br/>Data</h3>
+              <h3 className="how-step-title center">Soil Health <br/>Analysis</h3>
               
               <div className="how-footer-center">
                 <div className="btn-play-link">
@@ -257,9 +247,9 @@ const LandingPage = ({ onLogin, onSignup }) => {
             {/* Column 3 */}
             <div className="how-col col-right-exact">
               <div className="how-step-block-right">
-                <h3 className="how-step-title">AI Recommendation <br/>System</h3>
+                <h3 className="how-step-title">Crop Recommendation<br/>& Action Plan</h3>
                 <p className="how-desc-text">
-                  Receive optimized plans for planting, watering, and fertilizing.
+                  Receive the most suitable crop for your soil, along with a precise fertiliser plan and step-by-step farming guidance.
                 </p>
                 <div className="how-circle-wrapper large">
                   <img src="/precision_agriculture_about_us.png" alt="AI System" className="how-circle-img" />
@@ -280,10 +270,10 @@ const LandingPage = ({ onLogin, onSignup }) => {
           </div>
 
           <div className="tech-intro-row">
-            <h2 className="tech-main-title">Next-Generation AI for <br/> Precision Farming</h2>
+            <h2 className="tech-main-title">Professional Tools for<br/>the Modern Farmer</h2>
             <p className="tech-intro-desc">
-              Discover the true potential of your land. Planto's advanced algorithms decode complex soil and climate data, 
-              delivering pinpoint-accurate crop recommendations that maximize your yield and profitability.
+              Planto puts the power of soil science and machine learning directly in your hands.
+              From soil input to harvest plan, every feature is designed to help you make informed, profitable farming decisions.
             </p>
           </div>
 
@@ -291,16 +281,16 @@ const LandingPage = ({ onLogin, onSignup }) => {
             {/* Card 1: Smart Analytics */}
             <div className="feature-card card-wide card-smart-analytics">
               <div className="card-content">
-                <h3 className="card-title">Intelligent Soil Analysis</h3>
+                <h3 className="card-title">AI-Powered Soil Testing</h3>
                 <p className="card-desc">
-                  Unlock deep insights into your soil's composition. Our dynamic dashboard tracks crucial metrics 
-                  including NPK levels, moisture, temperature, and pH. Planto transforms this raw data into 
-                  actionable intelligence, guiding you toward the perfect crop selection.
+                  Enter your soil readings and instantly receive a detailed analysis. Planto evaluates nitrogen,
+                  phosphorus, potassium, pH, moisture, temperature, and humidity to identify the exact crop that
+                  will thrive on your land this season.
                 </p>
                 <ul className="card-list">
-                  <li>Evaluate vital soil metrics (NPK, pH, Moisture)</li>
-                  <li>Generate AI-powered crop recommendations</li>
-                  <li>Optimize planting strategies for maximum yield</li>
+                  <li>Analyse key soil metrics: NPK, pH, moisture & temperature</li>
+                  <li>Receive an AI-recommended crop matched to your soil profile</li>
+                  <li>Get a full fertiliser and planting action plan</li>
                 </ul>
                 <button className="btn-primary btn-learn-more">
                   Learn More <ExternalLink size={14} />
@@ -314,11 +304,11 @@ const LandingPage = ({ onLogin, onSignup }) => {
             {/* Card 2: AI Forecasting */}
             <div className="feature-card card-narrow card-ai-forecasting">
               <div className="card-content">
-                <h3 className="card-title">Predictive Crop Modeling</h3>
+                <h3 className="card-title">Crop Health Monitoring</h3>
                 <p className="card-desc">
-                  Eliminate the guesswork from your planting season. Our advanced forecasting models predict 
-                  crop success rates based on live environmental data, helping you plan your harvest with 
-                  absolute confidence.
+                  Track the health of every crop you plant throughout the growing season. Planto monitors
+                  soil nutrients, flags early warning signs, and alerts you when corrective action is needed  
+                  so you can protect your investment before problems escalate.
                 </p>
                 <a href="#!" onClick={e => e.preventDefault()} className="card-link">
                   Learn more <ExternalLink size={14} />
@@ -332,11 +322,11 @@ const LandingPage = ({ onLogin, onSignup }) => {
             {/* Card 3: Mobile App */}
             <div className="feature-card card-narrow card-mobile-app">
               <div className="card-content">
-                <h3 className="card-title">On-the-Go Insights</h3>
+                <h3 className="card-title">Farm Management on the Go</h3>
                 <p className="card-desc">
-                  Access vital soil analytics and crop predictions from anywhere, anytime. Our intuitive interface 
-                  ensures you're always connected to your farm's data, allowing you to make quick, informed 
-                  decisions directly from the field.
+                  Manage your farms, view soil test results, and monitor crop status directly from your mobile device.
+                  Planto is fully accessible in the field   no office required. Install it on your phone and carry
+                  your farm dashboard wherever you go.
                 </p>
                 <a href="#!" onClick={e => e.preventDefault()} className="card-link">
                   Learn more <ExternalLink size={14} />
@@ -350,16 +340,16 @@ const LandingPage = ({ onLogin, onSignup }) => {
             {/* Card 4: Machine Learning Engine */}
             <div className="feature-card card-wide card-ml-engine">
               <div className="card-content">
-                <h3 className="card-title">Adaptive AI Engine</h3>
+                <h3 className="card-title">Fertiliser & Yield Optimisation</h3>
                 <p className="card-desc">
-                  An intelligent system that evolves with your land. Planto's machine learning models continuously 
-                  train on localized soil data, refining their crop recommendations over time to perfectly match 
-                  your farm's unique ecosystem.
+                  Planto doesn't just recommend a crop   it tells you exactly how to prepare your soil for it.
+                  Receive a tailored fertiliser plan with specific quantities, application schedules, and nutrient
+                  correction steps to maximise your harvest output.
                 </p>
                 <ul className="card-list">
-                  <li>Self-optimizing crop prediction models</li>
-                  <li>Increased recommendation accuracy with every input</li>
-                  <li>Hyper-localized analysis for maximum relevance</li>
+                  <li>Custom fertiliser recommendations based on soil deficiencies</li>
+                  <li>Nutrient correction guidance for nitrogen, phosphorus & potassium</li>
+                  <li>Yield optimisation strategies for each growing season</li>
                 </ul>
                 <a href="#!" onClick={e => e.preventDefault()} className="card-link">
                   Learn more <ExternalLink size={14} />
@@ -384,19 +374,19 @@ const LandingPage = ({ onLogin, onSignup }) => {
 
           <div className="data-content">
             <div className="data-info">
-              <h2 className="data-title">Real Impact. Real <br/> Growth.</h2>
+              <h2 className="data-title">Proven Results.<br/>Every Season.</h2>
               <ul className="impact-list">
                 <li>
                   <span className="impact-emoji">💰</span>
-                  <span className="impact-text">↑ 28% profit from optimal crop matching</span>
+                  <span className="impact-text">↑ 28% increase in farm profitability through optimal crop selection</span>
                 </li>
                 <li>
                   <span className="impact-emoji">🌿</span>
-                  <span className="impact-text">↓ 33% reduction in resource waste</span>
+                  <span className="impact-text">↓ 33% reduction in fertiliser waste with precision soil guidance</span>
                 </li>
                 <li>
                   <span className="impact-emoji">📈</span>
-                  <span className="impact-text">↑ 42% increase in predicted yields</span>
+                  <span className="impact-text">↑ 42% higher yields reported by farmers using AI recommendations</span>
                 </li>
               </ul>
             </div>
@@ -468,10 +458,10 @@ const LandingPage = ({ onLogin, onSignup }) => {
           </div>
 
           <div className="stories-intro">
-            <h2 className="stories-title">Harvesting Success <br/> with AI</h2>
+            <h2 className="stories-title">Trusted by Farmers.<br/>Proven in the Field.</h2>
             <p className="stories-desc">
-              From overcoming unpredictable seasons to achieving record-breaking yields, see how 
-              Planto's data-driven crop recommendations are transforming farms across the globe.
+              From smallholder farmers to commercial agronomists, Planto is helping agricultural professionals
+              make smarter decisions   and see tangible results at harvest time.
             </p>
           </div>
 
@@ -492,14 +482,14 @@ const LandingPage = ({ onLogin, onSignup }) => {
               </div>
 
               <p className="testimonial-text">
-                "For years, choosing the right crop felt like a gamble with my changing soil conditions. 
-                Once I used Planto's AI recommendations to analyze my field data, I confidently planted a 
-                high-yield crop tailored to my exact soil profile. My farm saw a record harvest!"
+                "Before Planto, I selected crops based on experience alone  sometimes it worked, sometimes it didn't.
+                After running my first soil test on the platform, I received a precise recommendation with a full
+                fertiliser plan. That season I achieved the highest yield I have recorded in over a decade of farming."
               </p>
 
               <div className="testimonial-author">
-                <h4 className="author-name">Md. Rafiq</h4>
-                <p className="author-title">Farm Owner, Kushtia</p>
+                <h4 className="author-name">Kamanzi Jean</h4>
+                <p className="author-title">Farm Owner, Eastern Province, Rwanda</p>
               </div>
             </div>
 
@@ -529,9 +519,9 @@ const LandingPage = ({ onLogin, onSignup }) => {
           </div>
 
           <div className="team-intro">
-            <h2 className="team-title">The Minds Behind Planto</h2>
+            <h2 className="team-title">The Team Behind Planto</h2>
             <p className="team-subtitle">
-              Innovators, scientists, and field experts—united to <br/> shape the future of farming.
+              Engineers and agricultural technology specialists committed to<br/>building tools that serve farmers with precision and reliability.
             </p>
           </div>
 
@@ -563,13 +553,13 @@ const LandingPage = ({ onLogin, onSignup }) => {
           <div className="cta-banner">
             <div className="cta-overlay"></div>
             <div className="cta-content">
-              <h2 className="cta-title">Join the Green <br/> Farming Revolution</h2>
+              <h2 className="cta-title">Make Every Planting<br/>Season Count</h2>
               <div className="cta-btns">
                 <button className="btn-primary btn-large" onClick={handleSignup}>
-                  Start Farming Smarter <ExternalLink size={16} />
+                  Start Your Free Soil Test <ExternalLink size={16} />
                 </button>
                 <button className="btn-white btn-large" onClick={onLogin}>
-                  Get a Demo <ExternalLink size={16} />
+                  Sign In to Your Farm <ExternalLink size={16} />
                 </button>
               </div>
             </div>
@@ -605,32 +595,32 @@ const LandingPage = ({ onLogin, onSignup }) => {
                   <li><a href="#home">Home</a></li>
                   <li><a href="#about">About Us</a></li>
                   <li><a href="#how-it-works">How It Works</a></li>
-                  <li><a href="#team">Team</a></li>
+                  <li><a href="#team">Our Team</a></li>
                 </ul>
               </div>
               <div className="footer-links-col">
-                <h4 className="links-title">Product</h4>
+                <h4 className="links-title">Platform</h4>
                 <ul className="links-list">
-                  <li><a href="#features">Soil Analytics</a></li>
-                  <li><a href="#features">AI Forecasting</a></li>
+                  <li><a href="#features">Soil Testing</a></li>
+                  <li><a href="#features">Crop Recommendations</a></li>
+                  <li><a href="#features">Farm Monitoring</a></li>
                   <li><a href="#data">Impact Data</a></li>
-                  <li><a href="#cta">Pricing</a></li>
                 </ul>
               </div>
               <div className="footer-links-col">
-                <h4 className="links-title">Company</h4>
+                <h4 className="links-title">Support</h4>
                 <ul className="links-list">
-                  <li><a href="#testimonials">Testimonials</a></li>
-                  <li><a href="#!" onClick={e => e.preventDefault()}>Careers</a></li>
-                  <li><a href="#!" onClick={e => e.preventDefault()}>Blog</a></li>
+                  <li><a href="#testimonials">Farmer Stories</a></li>
+                  <li><a href="#!" onClick={e => e.preventDefault()}>Help Centre</a></li>
                   <li><a href="#!" onClick={e => e.preventDefault()}>Contact Us</a></li>
+                  <li><a href="#!" onClick={e => e.preventDefault()}>Privacy Policy</a></li>
                 </ul>
               </div>
             </div>
           </div>
 
           <div className="footer-bottom">
-            <p className="footer-copy">2025 Planto. All Rights Reserved. Design by Team Originative Lab</p>
+            <p className="footer-copy">© 2026 Planto. All Rights Reserved. Empowering farmers with precision agriculture.</p>
             <div className="footer-legal">
               <a href="#!" onClick={e => e.preventDefault()}>Privacy Policy</a>
               <a href="#!" onClick={e => e.preventDefault()}>Terms of Service</a>

@@ -11,6 +11,7 @@ const Reports = lazy(() => import('./Reports'));
 const Settings = lazy(() => import('./Settings'));
 const Monitoring = lazy(() => import('./pages/Monitoring'));
 const SoilTest = lazy(() => import('./pages/SoilTest'));
+const AgronomistDashboard = lazy(() => import('./pages/AgronomistDashboard'));
 import { monitoringApi } from './api/monitoringApi';
 import { farmApi, weatherApi, alertApi } from './api/farmApi';
 import { getCached, setCached } from './api/cache';
@@ -41,6 +42,7 @@ import {
 function App() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [restChoice, setRestChoice] = useState(null); // null | 'plant' | 'rest'
   const [locationActive, setLocationActive] = useState(true);
   const [toast, setToast] = useState(null);
   const [alerts, setAlerts] = useState([]);
@@ -102,7 +104,7 @@ function App() {
     localStorage.setItem('planto_user', JSON.stringify(userData));
     setUser(userData);
     setIsAuthenticated(true);
-    navigate('/dashboard');
+    navigate(userData.role === 'agronomist' ? '/my-farms' : '/dashboard');
   };
 
   const handlePlantCrop = async () => {
@@ -115,6 +117,7 @@ function App() {
         setToast({ type: 'success', message: `${result.crop} has been added to your monitoring list!` });
         setTimeout(() => setToast(null), 5000);
         setResult(null);
+        setRestChoice(null);
         setActiveTab('monitoring');
       } catch (err) {
         setToast({ type: 'error', message: 'Failed to plant crop. Please try again.' });
@@ -163,6 +166,7 @@ function App() {
         setToast({ type: 'success', message: `${result.crop} has been added to your offline monitoring list!` });
         setTimeout(() => setToast(null), 5000);
         setResult(null);
+        setRestChoice(null);
         setActiveTab('monitoring');
       } catch (err) {
         setToast({ type: 'error', message: 'Failed to plant crop locally.' });
@@ -175,6 +179,7 @@ function App() {
 
   const handleDeclineCrop = () => {
     setResult(null);
+    setRestChoice(null);
     setToast({ type: 'success', message: 'Crop recommendation declined. Form cleared.' });
     setTimeout(() => setToast(null), 3000);
   };
@@ -430,7 +435,13 @@ function App() {
             Planto
           </div>
           <div className="nav-links">
-            {(user?.role === 'farmer' || user?.role === 'agronomist' || user?.role === 'admin') && (
+            {user?.role === 'agronomist' ? (
+              <>
+                <Link to="/my-farms" className={`nav-item ${activeTab === 'my-farms' ? 'active' : ''}`}>My Farms</Link>
+                <Link to="/soil-test" className={`nav-item ${activeTab === 'soil-test' ? 'active' : ''}`}>Soil Test</Link>
+                <Link to="/settings" className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`}>Settings</Link>
+              </>
+            ) : (user?.role === 'farmer' || user?.role === 'admin') && (
               <>
                 <Link to="/dashboard" className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}>Home</Link>
                 {user?.role === 'farmer' && <Link to="/soil-test" className={`nav-item ${activeTab === 'soil-test' ? 'active' : ''}`}>Soil Test</Link>}
@@ -487,7 +498,7 @@ function App() {
                 setParams={setSoilTestParams}
                 setActiveTab={setActiveTab}
                 setHeaderActions={setHeaderActions}
-                setResult={setResult}
+                setResult={(r) => { setRestChoice(null); setResult(r); }}
                 setToast={setToast}
               />
             } />
@@ -501,6 +512,9 @@ function App() {
               />
             } />
             <Route path="/settings" element={<Settings user={user} setUser={setUser} setHeaderActions={setHeaderActions} onLogout={confirmLogout} />} />
+            {user?.role === 'agronomist' && (
+              <Route path="/my-farms" element={<AgronomistDashboard user={user} setHeaderActions={setHeaderActions} />} />
+            )}
 <Route path="/dashboard" element={(() => {
               if (window.innerWidth <= 768) return (
                 <MobileDashboard
@@ -690,8 +704,8 @@ function App() {
             </div>
               );
             })()} />
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/" element={<Navigate to={user?.role === 'agronomist' ? '/my-farms' : '/dashboard'} replace />} />
+            <Route path="*" element={<Navigate to={user?.role === 'agronomist' ? '/my-farms' : '/dashboard'} replace />} />
           </Routes>
           </Suspense>
         </div>
@@ -743,71 +757,159 @@ function App() {
             </div>
           ) : (
             <div className="report-section">
-              <h2 className="sidebar-title">Your Soil Report</h2>
-              <p className="sidebar-subtitle">Here are the results found by our AI today.</p>
-              
-              <div className="result-crop-card">
-                <div className="crop-icon-wrapper">
-                  <Leaf size={24} />
-                </div>
-                <div className="crop-details">
-                  <div className="crop-label">Best Crop to Plant</div>
-                  <div className="crop-name">{result.crop}</div>
-                </div>
-                <div className="confidence-badge">
-                  {Math.round((result.confidence || 0) * 100)}%
-                </div>
-              </div>
+              <h2 className="sidebar-title">Soil Analysis Report</h2>
+              <p className="sidebar-subtitle">AI assessment based on your current soil readings.</p>
 
-              <h3 style={{fontFamily: 'var(--font-heading)', fontSize: '1.1rem', marginBottom: '1rem'}}>Steps to Take Next</h3>
-              
-              <div style={{overflowY: 'auto', paddingRight: '0.5rem', marginBottom: '4rem'}}>
-                {(typeof result.advice === 'string' ? result.advice.split('. ') : result.advice).map((step, i) => {
-                  if(!step) return null;
-                  return (
-                    <div key={i} className="plan-item">
-                      <div className="plan-icon">
-                        <span style={{fontSize: '0.8rem', fontWeight: 800}}>{i+1}</span>
+              {(() => {
+                const conf = Math.round((result.confidence || 0) * 100);
+                // Low-confidence: status is REST but we still have a crop match the farmer can choose
+                const isLowConfidence = result.status === 'REST THE LAND' && result.crop !== 'Rest Land';
+                const isTrueRest = result.crop === 'Rest Land';
+                const isRest = isTrueRest || (isLowConfidence && restChoice === 'rest');
+                const showChoice = isLowConfidence && restChoice === null;
+
+                const badgeColor = isRest ? '#ef4444' : conf < 85 ? '#f59e0b' : '#10b981';
+                const cardBg = isRest ? 'rgba(239,68,68,0.12)' : conf < 85 ? 'rgba(245,158,11,0.12)' : 'rgba(16,185,129,0.12)';
+                const cropLabel = result.crop?.charAt(0).toUpperCase() + result.crop?.slice(1);
+
+                const REST_ADVICE = [
+                  "Rest your land this season. Do not plant any crop right now.",
+                  "Add compost, animal manure, or green cover crops to feed and rebuild your soil.",
+                  "After one full season, test your soil again before deciding what to plant next.",
+                ];
+
+                const adviceItems = isRest && isLowConfidence
+                  ? REST_ADVICE
+                  : (typeof result.advice === 'string' ? result.advice.split('. ') : result.advice);
+
+                const planTitle = isTrueRest
+                  ? 'Soil Recovery Plan'
+                  : isLowConfidence && restChoice === 'rest'
+                    ? 'Soil Recovery Plan'
+                    : (user?.role === 'farmer' ? 'What To Do Next' : 'Agronomic Action Plan');
+
+                return (
+                  <>
+                    {/* Crop result card */}
+                    <div style={{ background: cardBg, border: `1px solid ${badgeColor}30`, borderRadius: '16px', padding: '1rem', marginBottom: '1.25rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                          <div style={{ width: 36, height: 36, borderRadius: '10px', background: `${badgeColor}20`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {isTrueRest ? <AlertTriangle size={18} color={badgeColor} /> : <Leaf size={18} color={badgeColor} />}
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                              {isTrueRest ? 'Recommendation' : 'Best Match'}
+                            </div>
+                            <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#fff', lineHeight: 1.2 }}>
+                              {isTrueRest ? 'Rest Your Land' : cropLabel}
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: '1.4rem', fontWeight: 900, color: badgeColor, lineHeight: 1 }}>{conf}%</div>
+                          <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.45)', fontWeight: 600 }}>compatibility</div>
+                        </div>
                       </div>
-                      <div className="plan-text">
-                        <h4>Step {i+1}</h4>
-                        <p>{step}</p>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: `${badgeColor}20`, borderRadius: '6px', padding: '0.25rem 0.65rem' }}>
+                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: badgeColor }} />
+                        <span style={{ fontSize: '0.7rem', fontWeight: 700, color: badgeColor }}>
+                          {isTrueRest ? 'Do Not Plant' : isLowConfidence ? 'Low Match' : conf < 85 ? 'Plant with Caution' : 'Safe to Plant'}
+                        </span>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
 
-              <div style={{
-                position: 'absolute', bottom: '0', left: '0', right: '0', 
-                padding: '1.5rem', background: 'linear-gradient(to top, var(--bg-sidebar) 85%, transparent)',
-                borderTop: '1px solid rgba(255, 255, 255, 0.05)',
-                display: 'flex', flexDirection: 'column', gap: '0.75rem',
-                zIndex: 10
-              }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'rgba(255, 255, 255, 0.7)', textAlign: 'center' }}>
-                  Plant this recommended crop on your farm?
-                </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button 
-                    className="action-btn-pro" 
-                    style={{ flex: 1, justifyContent: 'center', background: 'var(--accent-emerald)', color: 'var(--bg-sidebar)', padding: '0.6rem 0.5rem', fontSize: '0.8rem' }}
-                    onClick={handlePlantCrop}
-                    disabled={loading}
-                  >
-                    {loading ? <Loader2 size={14} className="lucide-spin" style={{ animation: 'spin 1s linear infinite' }} /> : <Sprout size={14} />}
-                    Accept & Plant
-                  </button>
-                  <button 
-                    className="action-btn-pro" 
-                    style={{ flex: 1, justifyContent: 'center', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#fca5a5', padding: '0.6rem 0.5rem', fontSize: '0.8rem' }}
-                    onClick={handleDeclineCrop}
-                    disabled={loading}
-                  >
-                    Decline
-                  </button>
-                </div>
-              </div>
+                    {/* Choice card — shown only for low-confidence, before user decides */}
+                    {showChoice && (
+                      <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: '14px', padding: '1rem', marginBottom: '1.25rem' }}>
+                        <p style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, margin: '0 0 1rem' }}>
+                          Your soil is closest to <strong style={{ color: '#f59e0b' }}>{cropLabel}</strong> conditions at <strong style={{ color: '#f59e0b' }}>{conf}%</strong> — below the 65% planting threshold.
+                          You can still choose to plant and follow the preparation steps, or rest your land this season.
+                        </p>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button
+                            onClick={() => setRestChoice('plant')}
+                            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', background: 'rgba(245,158,11,0.18)', border: '1px solid rgba(245,158,11,0.4)', color: '#f59e0b', borderRadius: '10px', padding: '0.6rem 0.5rem', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer' }}
+                          >
+                            <Sprout size={14} /> Plant {cropLabel} Anyway
+                          </button>
+                          <button
+                            onClick={() => setRestChoice('rest')}
+                            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.65)', borderRadius: '10px', padding: '0.6rem 0.5rem', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}
+                          >
+                            Rest My Land
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Guidance section — shown after choice or for normal/true-rest cases */}
+                    {!showChoice && (
+                      <>
+                        <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '0.95rem', fontWeight: 700, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.85rem' }}>
+                          {planTitle}
+                        </h3>
+
+                        <div style={{ overflowY: 'auto', paddingRight: '0.5rem', marginBottom: '4rem' }}>
+                          {adviceItems.map((step, i) => {
+                            if (!step?.trim()) return null;
+                            return (
+                              <div key={i} className="plan-item" style={{ marginBottom: '0.75rem' }}>
+                                <div className="plan-icon" style={{ minWidth: 28, height: 28, fontSize: '0.72rem' }}>
+                                  <span style={{ fontSize: '0.72rem', fontWeight: 800 }}>{i + 1}</span>
+                                </div>
+                                <div className="plan-text">
+                                  <p style={{ fontSize: '0.82rem', lineHeight: 1.55, color: 'rgba(255,255,255,0.82)', margin: 0 }}>{step}</p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', padding: '1.25rem 1.5rem', background: 'linear-gradient(to top, var(--bg-sidebar) 80%, transparent)', display: 'flex', flexDirection: 'column', gap: '0.6rem', zIndex: 10 }}>
+                          {/* Show "Confirm & Plant" only when crop is valid (not a rest scenario) */}
+                          {!isTrueRest && restChoice !== 'rest' && (
+                            <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.55)', textAlign: 'center' }}>
+                              Would you like to add <strong style={{ color: '#fff' }}>{cropLabel}</strong> to your farm monitoring?
+                            </div>
+                          )}
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            {!isTrueRest && restChoice !== 'rest' && (
+                              <button
+                                className="action-btn-pro"
+                                style={{ flex: 1, justifyContent: 'center', background: 'var(--accent-emerald)', color: 'var(--bg-sidebar)', padding: '0.65rem 0.5rem', fontSize: '0.8rem', fontWeight: 700 }}
+                                onClick={handlePlantCrop}
+                                disabled={loading}
+                              >
+                                {loading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Sprout size={14} />}
+                                Confirm & Plant
+                              </button>
+                            )}
+                            {isLowConfidence && restChoice !== null && (
+                              <button
+                                className="action-btn-pro"
+                                style={{ flex: 1, justifyContent: 'center', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.7)', padding: '0.65rem 0.5rem', fontSize: '0.8rem' }}
+                                onClick={() => setRestChoice(null)}
+                                disabled={loading}
+                              >
+                                Change My Mind
+                              </button>
+                            )}
+                            <button
+                              className="action-btn-pro"
+                              style={{ flex: 1, justifyContent: 'center', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.7)', padding: '0.65rem 0.5rem', fontSize: '0.8rem' }}
+                              onClick={handleDeclineCrop}
+                              disabled={loading}
+                            >
+                              {isTrueRest || restChoice === 'rest' ? 'Clear Report' : 'Dismiss'}
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </>
+                );
+              })()}
 
             </div>
           )}
@@ -873,7 +975,7 @@ function App() {
 
       {/* Pro logout confirmation modal */}
       {showLogoutModal && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
           <div style={{ background: '#fff', borderRadius: '24px', width: '100%', maxWidth: '420px', padding: '2rem 1.5rem 1.5rem', boxShadow: '0 24px 60px rgba(0,0,0,0.2)', animation: 'slideUpModal 0.22s cubic-bezier(0.34,1.56,0.64,1)' }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', marginBottom: '1.75rem' }}>
               <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#fff1f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

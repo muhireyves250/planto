@@ -32,6 +32,24 @@ def create_user(db: Session, user: UserCreate):
     
     return db_user
 
+def create_google_user(db: Session, email: str, full_name: str, role: str = "farmer"):
+    final_role = role if role in ["farmer", "agronomist"] else "farmer"
+    db_user = User(
+        email=email,
+        full_name=full_name,
+        hashed_password="GOOGLE_OAUTH",
+        role=final_role
+    )
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+
+    db_profile = UserProfile(user_id=db_user.id)
+    db.add(db_profile)
+    db.commit()
+
+    return db_user
+
 def get_user_profile(db: Session, user_id: UUID):
     return db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
 

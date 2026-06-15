@@ -22,9 +22,9 @@ from app.models.alert import Alert
 router = APIRouter(tags=["Monitoring"])
 
 @router.post("/plant-crop", response_model=mon_schemas.PlantedCropDB)
-async def plant_crop(user_id: UUID, crop_name: str, status: str = "pending", db: Session = Depends(get_db), current_user: User = Depends(role_required(["farmer"]))):
-    actual_user_id = current_user.id if current_user.role == "farmer" else user_id
-    return monitoring_repo.create_planted_crop(db=db, user_id=actual_user_id, crop_name=crop_name, status=status)
+async def plant_crop(user_id: UUID, crop_name: str, status: str = "pending", farm_id: UUID = None, db: Session = Depends(get_db), current_user: User = Depends(role_required(["farmer", "agronomist", "admin"]))):
+    actual_user_id = current_user.id if current_user.role in ["farmer", "agronomist"] else user_id
+    return monitoring_repo.create_planted_crop(db=db, user_id=actual_user_id, crop_name=crop_name, status=status, farm_id=farm_id)
 
 @router.get("/planted-crops/{user_id}", response_model=List[mon_schemas.PlantedCropDB])
 async def get_my_crops(user_id: UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -36,7 +36,7 @@ async def get_all_crops(db: Session = Depends(get_db), current_user: User = Depe
     return monitoring_repo.get_all_planted_crops(db=db)
 
 @router.post("/soil-monitoring/{plant_id}")
-async def add_monitoring(plant_id: UUID, data: mon_schemas.MonitoringCreate, db: Session = Depends(get_db), current_user: User = Depends(role_required(["farmer"]))):
+async def add_monitoring(plant_id: UUID, data: mon_schemas.MonitoringCreate, db: Session = Depends(get_db), current_user: User = Depends(role_required(["farmer", "agronomist", "admin"]))):
     # 1. Fetch planted crop
     db_plant = monitoring_repo.get_planted_crop_by_id(db, plant_id)
     if not db_plant:
@@ -166,7 +166,7 @@ async def get_farm_data(db: Session = Depends(get_db), current_user: User = Depe
     return db.query(Farm).all()
 
 @router.put("/planted-crops/{plant_id}/status")
-async def update_crop_status(plant_id: UUID, status: str, db: Session = Depends(get_db), current_user: User = Depends(role_required(["farmer"]))):
+async def update_crop_status(plant_id: UUID, status: str, db: Session = Depends(get_db), current_user: User = Depends(role_required(["farmer", "agronomist", "admin"]))):
     db_plant = db.query(PlantedCrop).filter(PlantedCrop.id == plant_id).first()
     if not db_plant:
         raise HTTPException(status_code=404, detail="Planted crop not found")
@@ -178,7 +178,7 @@ async def update_crop_status(plant_id: UUID, status: str, db: Session = Depends(
     return {"success": True, "status": db_plant.status}
 
 @router.delete("/planted-crops/{plant_id}")
-async def delete_planted_crop(plant_id: UUID, db: Session = Depends(get_db), current_user: User = Depends(role_required(["farmer"]))):
+async def delete_planted_crop(plant_id: UUID, db: Session = Depends(get_db), current_user: User = Depends(role_required(["farmer", "agronomist", "admin"]))):
     db_plant = db.query(PlantedCrop).filter(PlantedCrop.id == plant_id).first()
     if not db_plant:
         raise HTTPException(status_code=404, detail="Planted crop not found")

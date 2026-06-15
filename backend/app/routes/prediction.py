@@ -29,12 +29,14 @@ async def predict(
             if farm and farm.owner_id != current_user.id and current_user.role not in ["admin", "agronomist"]:
                 raise HTTPException(status_code=403, detail="Not authorized to use this farm")
 
+        user_role = current_user.role if current_user else "farmer"
         crop, confidence, advice, status = predict_crop(
             n=data.n, p=data.p, k=data.k,
             temperature=data.temperature,
             humidity=data.humidity,
             ph=data.ph,
-            rainfall=data.rainfall
+            rainfall=data.rainfall,
+            role=user_role
         )
         
         prediction_record = pred_schemas.PredictionCreate(

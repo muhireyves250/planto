@@ -41,17 +41,20 @@ async def get_recommendation(
     # 3. Calculate Intelligence
     # Stage
     stage = growth_stage_engine.determine_growth_stage(db_plant.planting_date)
-    
+
     # Requirements & Deficits
     targets = nutrient_engine.get_target_requirements(db_plant.crop_name)
     current_values = {
-        "n": latest_data.nitrogen, "p": latest_data.phosphorus, "k": latest_data.potassium, 
+        "n": latest_data.nitrogen, "p": latest_data.phosphorus, "k": latest_data.potassium,
         "ph": latest_data.ph, "moisture": latest_data.moisture
     }
     deficits = deficiency_detector.calculate_deficits(targets, current_values)
-    
-    # Recommendations
-    fertilizers = recommendation_engine.calculate_fertilizers(deficits)
+
+    # Farm size — scale fertilizer quantities to actual farm area
+    farm_size_str = db_plant.farm.farm_size if db_plant.farm else None
+
+    # Recommendations (scaled by farm size + use-efficiency corrected)
+    fertilizers = recommendation_engine.calculate_fertilizers(deficits, stage, farm_size_str)
     
     # Health Score
     history = monitoring_repo.get_monitoring_history(db, plant_id, limit=2)
@@ -65,6 +68,7 @@ async def get_recommendation(
     # 4. Return full response
     return {
         "stage": stage,
+        "farm_size": farm_size_str or "1 hectare (default)",
         "deficit": deficits,
         "fertilizer": fertilizers,
         "health_score": score,
