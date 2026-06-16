@@ -176,40 +176,44 @@ async def send_all_weekly_reports() -> None:
     from app.services.email_service import send_report_email, send_agronomist_digest_email
 
     logger.info("Weekly report job starting")
-    db = SessionLocal()
     try:
-        farmers = db.query(User).filter(User.role == "farmer").all()
-        for user in farmers:
-            if not user.email:
-                continue
-            try:
-                report_data = get_farmer_report_data(user.id, db)
-                if not report_data["crops"]:
+        db = SessionLocal()
+        try:
+            farmers = db.query(User).filter(User.role == "farmer").all()
+            for user in farmers:
+                if not user.email:
                     continue
-                await send_report_email(
-                    to_email=user.email,
-                    full_name=user.full_name,
-                    report_data=report_data,
-                )
-            except Exception as e:
-                logger.warning("Weekly report failed for farmer %s: %s", user.email, e)
+                try:
+                    report_data = get_farmer_report_data(user.id, db)
+                    if not report_data["crops"]:
+                        continue
+                    await send_report_email(
+                        to_email=user.email,
+                        full_name=user.full_name,
+                        report_data=report_data,
+                    )
+                except Exception as e:
+                    logger.warning("Weekly report failed for farmer %s: %s", user.email, e)
 
-        agronomists = db.query(User).filter(User.role == "agronomist").all()
-        for user in agronomists:
-            if not user.email:
-                continue
-            try:
-                farms = get_agronomist_digest_data(user.id, db)
-                if not farms:
+            agronomists = db.query(User).filter(User.role == "agronomist").all()
+            for user in agronomists:
+                if not user.email:
                     continue
-                await send_agronomist_digest_email(
-                    to_email=user.email,
-                    full_name=user.full_name,
-                    farms=farms,
-                    report_date=date.today().strftime("%B %d, %Y"),
-                )
-            except Exception as e:
-                logger.warning("Digest failed for agronomist %s: %s", user.email, e)
-    finally:
-        db.close()
+                try:
+                    farms = get_agronomist_digest_data(user.id, db)
+                    if not farms:
+                        continue
+                    await send_agronomist_digest_email(
+                        to_email=user.email,
+                        full_name=user.full_name,
+                        farms=farms,
+                        report_date=date.today().strftime("%B %d, %Y"),
+                    )
+                except Exception as e:
+                    logger.warning("Digest failed for agronomist %s: %s", user.email, e)
+        finally:
+            db.close()
+    except Exception as e:
+        logger.error("Weekly report job failed: %s", e)
+        return
     logger.info("Weekly report job complete")
