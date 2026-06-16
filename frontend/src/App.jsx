@@ -13,6 +13,7 @@ const Settings = lazy(() => import('./Settings'));
 const Monitoring = lazy(() => import('./pages/Monitoring'));
 const SoilTest = lazy(() => import('./pages/SoilTest'));
 const AgronomistDashboard = lazy(() => import('./pages/AgronomistDashboard'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 import { useNotifications } from './hooks/useNotifications';
 import NotificationCenter from './components/NotificationCenter';
 import { monitoringApi } from './api/monitoringApi';
@@ -214,7 +215,11 @@ function App() {
         }
       }
     } catch {}
-    navigate(userData.role === 'agronomist' ? '/my-farms' : '/dashboard');
+    navigate(
+      userData.role === 'agronomist' ? '/my-farms' :
+      userData.role === 'admin' ? '/admin' :
+      '/dashboard'
+    );
   };
 
   const handlePlantCrop = async () => {
@@ -569,6 +574,11 @@ function App() {
                 <Link to="/monitoring" className={`nav-item ${activeTab === 'monitoring' ? 'active' : ''}`}>Monitoring</Link>
                 <Link to="/crop-status" className={`nav-item ${activeTab === 'crop-status' ? 'active' : ''}`}>Crop Status</Link>
                 {(!impersonatedFarmId) && <Link to="/settings" className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`}>Settings</Link>}
+                {user?.role === 'admin' && (
+                  <button onClick={() => setActiveTab('admin')} className={`nav-item ${activeTab === 'admin' ? 'active' : ''}`}>
+                    Admin
+                  </button>
+                )}
               </>
             )}
           </div>
@@ -670,14 +680,19 @@ function App() {
             <Route path="/crop-status" element={<Reports user={user} impersonatedFarmId={impersonatedFarmId} impersonatedFarm={impersonatedFarm} setHeaderActions={setHeaderActions} setReportModal={setReportModal} />} />
             <Route path="/settings" element={<Settings user={user} onUpdate={(u) => { setUser(u); localStorage.setItem('planto_user', JSON.stringify(u)); }} setHeaderActions={setHeaderActions} />} />
             <Route path="/my-farms" element={
-              <AgronomistDashboard 
-                user={user} 
-                setHeaderActions={setHeaderActions} 
+              <AgronomistDashboard
+                user={user}
+                setHeaderActions={setHeaderActions}
                 onSelectFarm={(farm) => {
                   setImpersonatedFarmId(farm.farm_id);
                   navigate('/dashboard');
-                }} 
+                }}
               />
+            } />
+            <Route path="/admin" element={
+              user?.role === 'admin'
+                ? <AdminDashboard />
+                : <Navigate to="/dashboard" replace />
             } />
           </Routes>
           </Suspense>
