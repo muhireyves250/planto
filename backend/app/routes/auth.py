@@ -10,6 +10,7 @@ from app.repositories import user_repo
 from app.models.user import User
 from app.core.config import settings
 from app.core.rbac import role_required, get_current_user
+from app.services.email_service import send_otp_email
 
 router = APIRouter(tags=["Authentication"])
 
@@ -57,9 +58,7 @@ async def login(user: auth_schemas.UserLogin, background_tasks: BackgroundTasks,
     otp_store[db_user.email] = otp
     print(f"--- OTP FOR {db_user.email}: {otp} ---")
 
-    # Send HTML OTP email in background — response returns immediately
-    from app.services.email_service import send_otp_email as _send_otp_html
-    background_tasks.add_task(_send_otp_html, db_user.email, db_user.full_name, otp)
+    background_tasks.add_task(send_otp_email, db_user.email, db_user.full_name, otp)
 
     return {
         "success": True,
@@ -166,7 +165,7 @@ async def forgot_password(data: dict, background_tasks: BackgroundTasks, db: Ses
     otp = str(random.randint(100000, 999999))
     otp_store[email] = otp
 
-    background_tasks.add_task(send_otp_email, email, otp)
+    background_tasks.add_task(send_otp_email, db_user.email, db_user.full_name, otp)
     return {"success": True, "message": "Reset code sent to your email"}
 
 @router.post("/reset-password")

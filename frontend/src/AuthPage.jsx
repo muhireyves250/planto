@@ -20,6 +20,7 @@ const AuthPage = ({ onLogin, onBack, initialIsLogin = true }) => {
   const otpRefs = useRef([]);
   const [forgotState, setForgotState] = useState('none'); // 'none', 'request', 'reset'
   const [newPassword, setNewPassword] = useState('');
+  const [resetOtp, setResetOtp] = useState('');
 
   const otp = otpDigits.join('');
 
@@ -182,14 +183,14 @@ const AuthPage = ({ onLogin, onBack, initialIsLogin = true }) => {
       const response = await fetch(`${BASE_URL}/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp, new_password: newPassword })
+        body: JSON.stringify({ email, otp: resetOtp, new_password: newPassword })
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || 'Failed to reset password');
 
       setForgotState('none');
       setIsLogin(true);
-      setOtp('');
+      setResetOtp('');
       setNewPassword('');
       setSuccessMsg("Password reset successfully! You can now log in.");
     } catch (err) {
@@ -302,8 +303,8 @@ const AuthPage = ({ onLogin, onBack, initialIsLogin = true }) => {
                     <input
                       type="text"
                       placeholder="123456"
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value)}
+                      value={resetOtp}
+                      onChange={(e) => setResetOtp(e.target.value)}
                       maxLength={6}
                       required
                     />
