@@ -622,59 +622,144 @@ function App() {
           </div>
 
           {sidebarView === 'notifications' ? (
-            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ padding: '1rem 1.25rem 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ color: 'white', fontWeight: 700, fontSize: '0.95rem' }}>Notifications</span>
-                {unreadAlertsCount > 0 && (
-                  <button
-                    onClick={notifications.markAllRead}
-                    style={{ fontSize: '0.7rem', color: '#10b981', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer' }}
-                  >
-                    Mark all read
-                  </button>
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+              {/* Header */}
+              <div style={{ padding: '1.5rem 1.4rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <span style={{ color: '#fff', fontWeight: 700, fontSize: '1rem', letterSpacing: '-0.01em' }}>Activity</span>
+                    {unreadAlertsCount > 0 && (
+                      <span style={{
+                        background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                        color: '#fff', fontSize: '0.6rem', fontWeight: 800,
+                        padding: '0.15rem 0.45rem', borderRadius: '999px', letterSpacing: '0.03em',
+                        boxShadow: '0 0 10px rgba(239,68,68,0.4)',
+                      }}>{unreadAlertsCount} NEW</span>
+                    )}
+                  </div>
+                  {unreadAlertsCount > 0 && (
+                    <button onClick={notifications.markAllRead} style={{
+                      fontSize: '0.67rem', color: '#10b981', fontWeight: 700, background: 'none',
+                      border: '1px solid rgba(16,185,129,0.3)', borderRadius: '4px',
+                      cursor: 'pointer', padding: '0.2rem 0.55rem', letterSpacing: '0.02em',
+                      transition: 'all 0.15s',
+                    }}>
+                      Clear all
+                    </button>
+                  )}
+                </div>
+                {alerts.length > 0 && (
+                  <div style={{ marginTop: '0.6rem', fontSize: '0.7rem', color: 'rgba(255,255,255,0.35)', letterSpacing: '0.02em' }}>
+                    {alerts.length} alert{alerts.length !== 1 ? 's' : ''} · {alerts.filter(a => a.type === 'critical').length} critical
+                  </div>
                 )}
               </div>
+
               {alerts.length === 0 ? (
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.4)', gap: '0.75rem', padding: '2rem' }}>
-                  <Bell size={36} />
-                  <span style={{ fontSize: '0.85rem' }}>No notifications yet</span>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', padding: '3rem 1.5rem' }}>
+                  <div style={{
+                    width: 52, height: 52, borderRadius: '50%',
+                    background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.15)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <Bell size={22} style={{ color: 'rgba(255,255,255,0.25)' }} />
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.82rem', fontWeight: 600 }}>All clear</div>
+                    <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.72rem', marginTop: '0.25rem' }}>No alerts at this time</div>
+                  </div>
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-                  {alerts.map((alert) => (
-                    <div key={alert.id} style={{
-                      padding: '0.85rem 1.25rem',
-                      borderBottom: '1px solid rgba(255,255,255,0.06)',
-                      background: !alert.is_read ? 'rgba(16,185,129,0.06)' : 'transparent',
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                        <span style={{
-                          fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
-                          padding: '0.15rem 0.5rem', borderRadius: '999px',
-                          background: alert.type === 'critical' ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)',
-                          color: alert.type === 'critical' ? '#f87171' : '#fbbf24',
-                        }}>
-                          {alert.type}
-                        </span>
-                        <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)' }}>
-                          {new Date(alert.created_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.85)', margin: '0.25rem 0', lineHeight: 1.4 }}>
-                        {alert.message}
-                      </p>
-                      <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.4rem' }}>
-                        {!alert.is_read && (
-                          <button onClick={() => notifications.markRead(alert.id)} style={{ fontSize: '0.68rem', color: '#10b981', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 }}>
-                            Mark as read
-                          </button>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  {alerts.map((alert, i) => {
+                    const isCritical = alert.type === 'critical';
+                    const accentColor = isCritical ? '#f87171' : '#fbbf24';
+                    const accentGlow = isCritical ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.1)';
+                    const ts = new Date(alert.created_at);
+                    const now = new Date();
+                    const diffMs = now - ts;
+                    const diffMins = Math.floor(diffMs / 60000);
+                    const timeLabel = diffMins < 60
+                      ? `${diffMins}m ago`
+                      : diffMins < 1440
+                        ? `${Math.floor(diffMins / 60)}h ago`
+                        : ts.toLocaleDateString('en', { month: 'short', day: 'numeric' });
+
+                    return (
+                      <div key={alert.id} style={{
+                        padding: '1rem 1.4rem',
+                        borderBottom: '1px solid rgba(255,255,255,0.05)',
+                        borderLeft: `3px solid ${!alert.is_read ? accentColor : 'rgba(255,255,255,0.08)'}`,
+                        background: !alert.is_read ? accentGlow : 'transparent',
+                        transition: 'background 0.2s',
+                        position: 'relative',
+                      }}>
+                        {/* Top row */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            {!alert.is_read && (
+                              <span style={{
+                                width: 6, height: 6, borderRadius: '50%',
+                                background: accentColor,
+                                boxShadow: `0 0 6px ${accentColor}`,
+                                flexShrink: 0,
+                              }} />
+                            )}
+                            <span style={{
+                              fontSize: '0.58rem', fontWeight: 800, textTransform: 'uppercase',
+                              letterSpacing: '0.08em', color: accentColor,
+                            }}>
+                              {isCritical ? '⚠ Critical' : '● Warning'}
+                            </span>
+                          </div>
+                          <span style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.3)', fontWeight: 500 }}>
+                            {timeLabel}
+                          </span>
+                        </div>
+
+                        {/* Title */}
+                        {alert.title && (
+                          <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#fff', marginBottom: '0.25rem', lineHeight: 1.3 }}>
+                            {alert.title}
+                          </div>
                         )}
-                        <button onClick={() => notifications.deleteAlert(alert.id)} style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginLeft: 'auto' }}>
-                          Delete
-                        </button>
+
+                        {/* Message */}
+                        <p style={{ fontSize: '0.73rem', color: 'rgba(255,255,255,0.6)', margin: 0, lineHeight: 1.5 }}>
+                          {alert.message}
+                        </p>
+
+                        {/* Actions */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.65rem' }}>
+                          {!alert.is_read && (
+                            <button onClick={() => notifications.markRead(alert.id)} style={{
+                              fontSize: '0.65rem', color: '#10b981', fontWeight: 700,
+                              background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                              letterSpacing: '0.02em',
+                            }}>
+                              Mark read
+                            </button>
+                          )}
+                          {alert.action_url && (
+                            <a href={alert.action_url} style={{
+                              fontSize: '0.65rem', color: 'rgba(255,255,255,0.45)', fontWeight: 600,
+                              textDecoration: 'none', letterSpacing: '0.02em',
+                            }}>
+                              View →
+                            </a>
+                          )}
+                          <button onClick={() => notifications.deleteAlert(alert.id)} style={{
+                            fontSize: '0.65rem', color: 'rgba(255,255,255,0.2)', fontWeight: 500,
+                            background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                            marginLeft: 'auto', letterSpacing: '0.02em',
+                            transition: 'color 0.15s',
+                          }}>
+                            Dismiss
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
