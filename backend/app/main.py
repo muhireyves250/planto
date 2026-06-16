@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.models import push_subscription as _push_sub_model  # noqa: F401 — ensures table is registered
-from app.routes import auth, prediction, monitoring, fertilizer, farm, weather, alert, sensor, agronomist, report
+from app.routes import auth, prediction, monitoring, fertilizer, farm, weather, alert, sensor, agronomist, report, admin
 from app.services.mqtt_service import start_mqtt_client
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -122,6 +122,7 @@ app.include_router(alert.router)
 app.include_router(sensor.router)
 app.include_router(agronomist.router)
 app.include_router(report.router)
+app.include_router(admin.router)
 
 from app.routes import notification_stream
 app.include_router(notification_stream.router)
