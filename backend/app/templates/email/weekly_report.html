@@ -53,8 +53,14 @@
           {% for crop in crops %}
           <tr>
             <td style="font-weight:600;text-transform:capitalize">{{ crop.name }}</td>
-            <td>{{ crop.health_score }}%</td>
-            <td><span class="badge {{ crop.health_label }}">{{ crop.health_label|capitalize }}</span></td>
+            <td>{% if crop.health_score is not none %}{{ crop.health_score }}%{% else %}—{% endif %}</td>
+            <td>
+              {% if crop.health_label == "none" %}
+                <span style="color:#94a3b8;font-size:13px">No data</span>
+              {% else %}
+                <span class="badge {{ crop.health_label }}">{{ crop.health_label|capitalize }}</span>
+              {% endif %}
+            </td>
           </tr>
           {% endfor %}
         </tbody>

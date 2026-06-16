@@ -79,6 +79,16 @@ def test_get_farmer_report_data_health_label_red():
     assert result["crops"][0]["health_label"] == "red"
 
 
+def test_get_farmer_report_data_no_health_history_shows_no_data():
+    from app.services.report_service import get_farmer_report_data
+    crop = _make_crop(health=0.82)
+    crop.health_history = []  # no health entries
+    db = _make_db([crop])
+    result = get_farmer_report_data(uuid4(), db)
+    assert result["crops"][0]["health_label"] == "none"
+    assert result["crops"][0]["health_score"] is None
+
+
 def test_get_farmer_report_data_upcoming_harvests_within_30_days():
     from app.services.report_service import get_farmer_report_data
     crops = [_make_crop("Banana", harvest_days=20), _make_crop("Jute", harvest_days=40)]

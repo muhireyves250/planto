@@ -49,12 +49,19 @@ def get_farmer_report_data(user_id: UUID, db: Session) -> dict:
 
     for crop in crops:
         latest_health = max(crop.health_history, key=lambda h: h.created_at, default=None)
-        score = latest_health.health_score if latest_health else 0.0
-        crop_rows.append({
-            "name": crop.crop_name,
-            "health_score": round(score * 100),
-            "health_label": _health_label(score),
-        })
+        if latest_health is not None:
+            score = latest_health.health_score
+            crop_rows.append({
+                "name": crop.crop_name,
+                "health_score": round(score * 100),
+                "health_label": _health_label(score),
+            })
+        else:
+            crop_rows.append({
+                "name": crop.crop_name,
+                "health_score": None,
+                "health_label": "none",
+            })
 
         if crop.expected_harvest_date:
             days_left = (crop.expected_harvest_date - today).days
