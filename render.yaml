@@ -7,10 +7,16 @@ services:
     envVars:
       - key: DATABASE_URL
         sync: false
-      - key: SMTP_EMAIL
+      - key: RESEND_API_KEY
+        sync: false
+      - key: SMTP_USER
         sync: false
       - key: SMTP_PASSWORD
         sync: false
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "587"
       - key: VITE_OPENWEATHER_API_KEY
         sync: false
       - key: SECRET_KEY

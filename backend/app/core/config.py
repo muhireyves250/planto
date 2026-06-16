@@ -31,5 +31,6 @@ class Settings:
     SMTP_USER: str = os.getenv("SMTP_USER", "")
     SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
     SMTP_FROM_NAME: str = os.getenv("SMTP_FROM_NAME", "Planto")
+    RESEND_API_KEY: str = os.getenv("RESEND_API_KEY", "")
 
 settings = Settings()
