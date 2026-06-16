@@ -102,6 +102,13 @@ def _run_migrations():
                 conn.execute(text(f"ALTER TABLE managed_farmers ADD COLUMN IF NOT EXISTS {col} {typ}"))
             except Exception:
                 pass
+
+        # Add avatar to user_profiles
+        try:
+            conn.execute(text("ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS avatar TEXT"))
+        except Exception:
+            pass
+
         conn.commit()
 
 # Include Routers

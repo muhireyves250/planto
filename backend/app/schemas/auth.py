@@ -31,6 +31,7 @@ class UserProfileBase(BaseModel):
     farm_size: str | None = None
     preferred_language: str | None = None
     farm_location: str | None = None
+    avatar: str | None = None
 
 class UserProfileDB(UserProfileBase):
     id: UUID

@@ -100,6 +100,8 @@ function App() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [reportModal, setReportModal] = useState(null); // null | 'success' | 'error'
+  const [avatar, setAvatar] = useState(() => { try { return localStorage.getItem('planto_avatar') || null; } catch { return null; } });
+  const avatarInputRef = React.useRef(null);
 
   useEffect(() => {
     if (impersonatedFarmId) {
@@ -163,18 +165,55 @@ function App() {
     setLoggingOut(true);
     setTimeout(() => {
       localStorage.removeItem('planto_user');
+      localStorage.removeItem('planto_avatar');
       setIsAuthenticated(false);
       setUser(null);
+      setAvatar(null);
       setResult(null);
       setLoggingOut(false);
       navigate('/');
     }, 900);
   };
 
-  const onLoginSuccess = (userData) => {
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const base64 = ev.target.result;
+      setAvatar(base64);
+      localStorage.setItem('planto_avatar', base64);
+      // Persist to backend
+      const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080';
+      try {
+        await fetch(`${BASE_URL}/settings/${user?.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${user?.access_token}` },
+          body: JSON.stringify({ avatar: base64 }),
+        });
+      } catch {}
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const onLoginSuccess = async (userData) => {
     localStorage.setItem('planto_user', JSON.stringify(userData));
     setUser(userData);
     setIsAuthenticated(true);
+    // Load avatar from backend
+    try {
+      const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080';
+      const res = await fetch(`${BASE_URL}/settings/${userData.id}`, {
+        headers: { 'Authorization': `Bearer ${userData.access_token}` },
+      });
+      if (res.ok) {
+        const profile = await res.json();
+        if (profile.avatar) {
+          setAvatar(profile.avatar);
+          localStorage.setItem('planto_avatar', profile.avatar);
+        }
+      }
+    } catch {}
     navigate(userData.role === 'agronomist' ? '/my-farms' : '/dashboard');
   };
 
@@ -671,7 +710,21 @@ function App() {
               )}
             </button>
             <button className="icon-btn" onClick={confirmLogout} title="Log Out"><LogOut size={20} /></button>
-            <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop" alt="Profile" className="profile-avatar" />
+            <input ref={avatarInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} />
+            <button
+              onClick={() => avatarInputRef.current?.click()}
+              title="Change profile photo"
+              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', position: 'relative' }}
+            >
+              {avatar ? (
+                <img src={avatar} alt="Profile" className="profile-avatar" style={{ objectFit: 'cover' }} />
+              ) : (
+                <div className="profile-avatar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', fontWeight: 800, fontSize: '0.8rem', letterSpacing: '0.03em' }}>
+                  {user?.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?'}
+                </div>
+              )}
+              <span style={{ position: 'absolute', bottom: 0, right: 0, width: 12, height: 12, background: '#10b981', borderRadius: '50%', border: '1.5px solid #1e362a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.45rem', color: '#fff' }}>✎</span>
+            </button>
           </div>
 
           {sidebarView === 'location' ? (
