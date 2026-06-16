@@ -13,7 +13,7 @@ import SoilHealthBars from '../components/monitoring/SoilHealthBars';
 import SoilRetestCTA from '../components/monitoring/SoilRetestCTA';
 import SmartAlerts from '../components/monitoring/SmartAlerts';
 
-const Monitoring = ({ user, setActiveTab, setSoilTestParams, setHeaderActions }) => {
+const Monitoring = ({ user, impersonatedFarmId, impersonatedFarm, setActiveTab, setSoilTestParams, setHeaderActions }) => {
   const [plantedCrops, setPlantedCrops] = useState([]);
   const [selectedCrop, setSelectedCrop] = useState(null);
   const [alerts, setAlerts] = useState([]);
@@ -43,7 +43,10 @@ const Monitoring = ({ user, setActiveTab, setSoilTestParams, setHeaderActions })
       let cropsData = [];
       let alertsData = [];
 
-      if (user?.id) {
+      if (impersonatedFarmId && impersonatedFarm) {
+        cropsData = impersonatedFarm.crops || [];
+        alertsData = impersonatedFarm.alerts || [];
+      } else if (user?.id) {
         [cropsData, alertsData] = await Promise.all([
           monitoringApi.getMyCrops(user.id),
           alertApi.getAlerts()
@@ -75,7 +78,7 @@ const Monitoring = ({ user, setActiveTab, setSoilTestParams, setHeaderActions })
     }
   };
 
-  useEffect(() => { loadData(); }, [user?.id]);
+  useEffect(() => { loadData(); }, [user?.id, impersonatedFarmId, impersonatedFarm]);
 
   useEffect(() => {
     if (!loading) setContentKey(k => k + 1);
@@ -173,7 +176,9 @@ const Monitoring = ({ user, setActiveTab, setSoilTestParams, setHeaderActions })
   const activeCrops = plantedCrops.filter(c => c.status === 'active').length;
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
-  const firstName = user?.full_name?.split(' ')[0] || 'Farmer';
+  const firstName = impersonatedFarm
+    ? (impersonatedFarm.farmer?.full_name?.split(' ')[0] || impersonatedFarm.farm_name || 'Farmer')
+    : (user?.full_name?.split(' ')[0] || 'Farmer');
   const monitoringSubtitle = loading
     ? 'Loading your crop data...'
     : activeCrops === 0

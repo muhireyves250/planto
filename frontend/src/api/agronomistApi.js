@@ -1,3 +1,5 @@
+import { getCached, setCached, clearCached } from './cache';
+
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080';
 
 function authHeaders(extra = {}) {
@@ -15,32 +17,76 @@ async function handle(res) {
 }
 
 export const agronomistApi = {
-  // Managed farmers
-  getFarmers: () =>
-    fetch(`${BASE_URL}/agronomist/farmers`, { headers: authHeaders() }).then(handle),
+  getFarmers: async () => {
+    const cached = getCached('agro_farmers');
+    if (cached) return cached;
+    const data = await fetch(`${BASE_URL}/agronomist/farmers`, { headers: authHeaders() }).then(handle);
+    setCached('agro_farmers', data);
+    return data;
+  },
 
   getFarmer: (id) =>
     fetch(`${BASE_URL}/agronomist/farmers/${id}`, { headers: authHeaders() }).then(handle),
 
-  addFarmer: (data) =>
-    fetch(`${BASE_URL}/agronomist/farmers`, {
+  addFarmer: async (data) => {
+    const result = await fetch(`${BASE_URL}/agronomist/farmers`, {
       method: 'POST', headers: authHeaders(), body: JSON.stringify(data),
-    }).then(handle),
+    }).then(handle);
+    clearCached('agro_farmers');
+    clearCached('agro_farms');
+    return result;
+  },
 
-  updateFarmer: (id, data) =>
-    fetch(`${BASE_URL}/agronomist/farmers/${id}`, {
+  updateFarmer: async (id, data) => {
+    const result = await fetch(`${BASE_URL}/agronomist/farmers/${id}`, {
       method: 'PATCH', headers: authHeaders(), body: JSON.stringify(data),
-    }).then(handle),
+    }).then(handle);
+    clearCached('agro_farmers');
+    return result;
+  },
 
-  deleteFarmer: (id) =>
-    fetch(`${BASE_URL}/agronomist/farmers/${id}`, {
+  deleteFarmer: async (id) => {
+    const result = await fetch(`${BASE_URL}/agronomist/farmers/${id}`, {
       method: 'DELETE', headers: authHeaders(),
+    }).then(handle);
+    clearCached('agro_farmers');
+    clearCached('agro_farms');
+    return result;
+  },
+
+  getFarms: async () => {
+    const cached = getCached('agro_farms');
+    if (cached) return cached;
+    const data = await fetch(`${BASE_URL}/agronomist/farms`, { headers: authHeaders() }).then(handle);
+    setCached('agro_farms', data);
+    return data;
+  },
+
+  getFarmDetail: async (farmId) => {
+    const key = `agro_farm_${farmId}`;
+    const cached = getCached(key);
+    if (cached) return cached;
+    const data = await fetch(`${BASE_URL}/agronomist/farms/${farmId}`, { headers: authHeaders() }).then(handle);
+    setCached(key, data);
+    return data;
+  },
+
+  invalidateFarm: (farmId) => {
+    clearCached(`agro_farm_${farmId}`);
+    clearCached('agro_farms');
+  },
+
+  updateFarm: async (farmId, data) => {
+    const result = await fetch(`${BASE_URL}/agronomist/farms/${farmId}`, {
+      method: 'PATCH', headers: authHeaders(), body: JSON.stringify(data),
+    }).then(handle);
+    clearCached(`agro_farm_${farmId}`);
+    clearCached('agro_farms');
+    return result;
+  },
+
+  sendFarmerReport: (farmId) =>
+    fetch(`${BASE_URL}/reports/send-farmer-report/${farmId}`, {
+      method: 'POST', headers: authHeaders(),
     }).then(handle),
-
-  // Managed farms
-  getFarms: () =>
-    fetch(`${BASE_URL}/agronomist/farms`, { headers: authHeaders() }).then(handle),
-
-  getFarmDetail: (farmId) =>
-    fetch(`${BASE_URL}/agronomist/farms/${farmId}`, { headers: authHeaders() }).then(handle),
 };

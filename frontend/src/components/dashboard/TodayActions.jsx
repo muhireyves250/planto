@@ -1,4 +1,3 @@
-import React from 'react';
 import { CheckCircle, ChevronRight, FlaskConical, Leaf, Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -25,23 +24,30 @@ function buildActions(crops, alerts) {
         iconBg: 'rgba(59,130,246,0.1)',
         text: `Retest soil for ${name}`,
         href: '/soil-test',
+        actionType: 'retest',
+        plantId: crop.id,
+        cropName: crop.crop_name || 'crop'
       });
     }
   }
 
   for (const crop of crops) {
+    if (crop.status !== 'active') continue;
     const plan = crop.fertilizer_plans?.[crop.fertilizer_plans.length - 1];
     if (plan && plan.fertilizer_type && plan.fertilizer_type !== 'None' && (plan.quantity_kg ?? 0) > 0) {
-      const name = crop.crop_name
-        ? crop.crop_name.charAt(0).toUpperCase() + crop.crop_name.slice(1).toLowerCase()
-        : 'crop';
-      actions.push({
-        id: `fert-${crop.id}`,
-        icon: <Leaf size={15} color="#10b981" />,
-        iconBg: 'rgba(16,185,129,0.1)',
-        text: `Apply ${plan.fertilizer_type} to ${name}`,
-        href: '/monitoring',
-      });
+      // Only show fertilizer action if the plan was generated in the last 3 days
+      if (daysSince(plan.created_at) <= 3) {
+        const name = crop.crop_name
+          ? crop.crop_name.charAt(0).toUpperCase() + crop.crop_name.slice(1).toLowerCase()
+          : 'crop';
+        actions.push({
+          id: `fert-${crop.id}`,
+          icon: <Leaf size={15} color="#10b981" />,
+          iconBg: 'rgba(16,185,129,0.1)',
+          text: `Apply ${plan.fertilizer_type} to ${name}`,
+          href: '/monitoring',
+        });
+      }
     }
   }
 
@@ -59,15 +65,20 @@ function buildActions(crops, alerts) {
   return actions;
 }
 
-export default function TodayActions({ crops, alerts }) {
+export default function TodayActions({ crops, alerts, setSoilTestParams }) {
   const navigate = useNavigate();
   const actions = buildActions(crops, alerts);
 
   const handleAction = (action) => {
     if (action.scrollToAlerts) {
       document.querySelector('.alerts-table-simple, .all-operational-state')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    } else if (action.href) {
-      navigate(action.href);
+    } else {
+      if (action.actionType === 'retest' && setSoilTestParams) {
+        setSoilTestParams({ mode: 'monitoring', plantId: action.plantId, cropName: action.cropName });
+      }
+      if (action.href) {
+        navigate(action.href);
+      }
     }
   };
 

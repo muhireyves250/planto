@@ -6,7 +6,11 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.js',
       registerType: 'autoUpdate',
+      injectRegister: 'auto',
       includeAssets: ['icon.svg', 'wheat-stalk.png', 'farm_bg.png'],
       manifest: {
         name: 'Planto – AI Crop Recommendation',

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ title }}</title>
+  <style>
+    body { margin: 0; padding: 0; background: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    .wrapper { max-width: 560px; margin: 40px auto; background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
+    .header { background: #1e3a2f; padding: 28px 32px; text-align: center; }
+    .header h1 { color: #fff; margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+    .header p { color: rgba(255,255,255,0.65); margin: 4px 0 0; font-size: 13px; }
+    .badge { display: inline-block; margin: 24px auto 0; padding: 4px 14px; border-radius: 99px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+    .badge-critical { background: #fee2e2; color: #dc2626; }
+    .badge-warning  { background: #fef3c7; color: #d97706; }
+    .badge-info     { background: #dbeafe; color: #2563eb; }
+    .body { padding: 28px 32px 24px; }
+    .body h2 { margin: 0 0 10px; font-size: 18px; font-weight: 800; color: #0f172a; }
+    .body p { margin: 0 0 20px; color: #475569; font-size: 15px; line-height: 1.6; }
+    .cta { display: block; text-align: center; }
+    .cta a { display: inline-block; background: #16a34a; color: #fff; text-decoration: none; padding: 12px 28px; border-radius: 10px; font-size: 14px; font-weight: 700; }
+    .footer { padding: 16px 32px; background: #f8fafc; text-align: center; font-size: 12px; color: #94a3b8; }
+    .footer a { color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1>🌱 Planto</h1>
+      <p>Smart Farm Management</p>
+    </div>
+    <div style="text-align:center">
+      <span class="badge badge-{{ alert_type }}">{{ alert_type }}</span>
+    </div>
+    <div class="body">
+      <h2>{{ title }}</h2>
+      <p>{{ message }}</p>
+      {% if crop_name %}
+      <p style="font-size:13px;color:#94a3b8;margin:-10px 0 20px">Crop: <strong style="color:#0f172a">{{ crop_name }}</strong>{% if farm_name %} · Farm: <strong style="color:#0f172a">{{ farm_name }}</strong>{% endif %}</p>
+      {% endif %}
+      <div class="cta">
+        <a href="{{ app_url }}{{ action_url }}">View in Planto →</a>
+      </div>
+    </div>
+    <div class="footer">
+      You're receiving this because you have notifications enabled for your Planto account.<br>
+      <a href="{{ app_url }}/settings">Manage notifications</a>
+    </div>
+  </div>
+</body>
+</html>

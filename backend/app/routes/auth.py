@@ -3,8 +3,6 @@ from sqlalchemy.orm import Session
 import random
 import httpx
 from uuid import UUID
-import smtplib
-from email.mime.text import MIMEText
 from app.core.database import get_db
 from app.core.security import verify_password, create_access_token, get_password_hash
 from app.schemas import auth as auth_schemas
@@ -20,28 +18,6 @@ otp_store = {}
 
 # Reusable httpx client — avoids TCP handshake overhead per Google login
 _http_client = httpx.AsyncClient(timeout=10.0)
-
-def send_otp_email(to_email: str, otp: str):
-    print(f"--- OTP FOR {to_email}: {otp} ---")
-
-    if not settings.SMTP_EMAIL or not settings.SMTP_PASSWORD:
-        print("SMTP credentials not configured. OTP printed to console only.")
-        return True
-
-    try:
-        msg = MIMEText(f"Your Planto verification code is: {otp}\n\nThis code will expire in 10 minutes.")
-        msg['Subject'] = 'Planto - Verification Code'
-        msg['From'] = settings.SMTP_EMAIL
-        msg['To'] = to_email
-
-        server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
-        server.login(settings.SMTP_EMAIL, settings.SMTP_PASSWORD)
-        server.send_message(msg)
-        server.quit()
-        return True
-    except Exception as e:
-        print(f"Failed to send email: {e}")
-        return False
 
 @router.post("/register")
 async def register(user: auth_schemas.UserCreate, db: Session = Depends(get_db)):
@@ -79,9 +55,11 @@ async def login(user: auth_schemas.UserLogin, background_tasks: BackgroundTasks,
 
     otp = str(random.randint(100000, 999999))
     otp_store[db_user.email] = otp
+    print(f"--- OTP FOR {db_user.email}: {otp} ---")
 
-    # Send email in background — response returns immediately, no SMTP wait
-    background_tasks.add_task(send_otp_email, db_user.email, otp)
+    # Send HTML OTP email in background — response returns immediately
+    from app.services.email_service import send_otp_email as _send_otp_html
+    background_tasks.add_task(_send_otp_html, db_user.email, db_user.full_name, otp)
 
     return {
         "success": True,

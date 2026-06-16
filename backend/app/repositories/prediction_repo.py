@@ -11,9 +11,11 @@ def create_prediction(db: Session, prediction: PredictionCreate):
         p=prediction.p,
         k=prediction.k,
         temperature=prediction.temperature,
-        humidity=prediction.humidity,
         ph=prediction.ph,
-        rainfall=prediction.rainfall,
+        ec=prediction.ec,
+        moisture=prediction.moisture,
+        humidity=prediction.humidity,    # legacy, may be None
+        rainfall=prediction.rainfall,    # legacy, may be None
         predicted_crop=prediction.predicted_crop,
         confidence=prediction.confidence
     )
@@ -27,3 +29,6 @@ def get_predictions(db: Session, skip: int = 0, limit: int = 100):
 
 def get_user_predictions(db: Session, user_id: UUID, limit: int = 100):
     return db.query(Prediction).filter(Prediction.user_id == user_id).order_by(Prediction.created_at.desc()).limit(limit).all()
+
+def get_farm_predictions(db: Session, farm_id: UUID, limit: int = 100):
+    return db.query(Prediction).filter(Prediction.farm_id == farm_id).order_by(Prediction.created_at.desc()).limit(limit).all()

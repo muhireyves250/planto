@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from typing import List
@@ -79,11 +80,11 @@ async def add_monitoring(plant_id: UUID, data: mon_schemas.MonitoringCreate, db:
                 nitrogen_deficit=deficits.get("N", 0) if rec["type"] == "Urea" else 0,
                 phosphorus_deficit=deficits.get("P", 0) if rec["type"] == "DAP" else 0,
                 potassium_deficit=deficits.get("K", 0) if rec["type"] == "NPK (17%)" else 0,
-                urea_kg=rec["kg"] if rec["type"] == "Urea" else 0.0,
-                dap_kg=rec["kg"] if rec["type"] == "DAP" else 0.0,
-                npk_kg=rec["kg"] if rec["type"] == "NPK (17%)" else 0.0,
+                urea_kg=rec["total_kg"] if rec["type"] == "Urea" else 0.0,
+                dap_kg=rec["total_kg"] if rec["type"] == "DAP" else 0.0,
+                npk_kg=rec["total_kg"] if rec["type"] == "NPK (17%)" else 0.0,
                 fertilizer_type=rec["type"],
-                quantity_kg=rec["kg"],
+                quantity_kg=rec["total_kg"],
                 nutrient_target=rec["nutrient_target"],
                 explanation=rec["reason"],
                 generated_by="system"
@@ -125,16 +126,130 @@ async def add_monitoring(plant_id: UUID, data: mon_schemas.MonitoringCreate, db:
         crop_name=db_plant.crop_name
     )
     
+    from app.services import notification_service
+
     for alert_data in generated_alerts:
-        db.add(Alert(
+        title = "Crop Alert" if alert_data["type"] != "critical" else "⚠️ Critical Crop Alert"
+        new_alert = Alert(
             user_id=current_user.id,
             plant_id=plant_id,
             type=alert_data["type"],
-            message=alert_data["message"]
-        ))
+            category="soil",
+            title=title,
+            message=alert_data["message"],
+            action_url="/monitoring",
+        )
+        db.add(new_alert)
+    
+        # Fan-out to managing agronomist if this is a managed farm
+        from app.models.farm import Farm
+        farm_obj = db.query(Farm).filter(Farm.id == db_plant.farm_id).first()
+        if farm_obj and farm_obj.agronomist_id:
+            db.add(Alert(
+                user_id=farm_obj.agronomist_id,
+                plant_id=plant_id,
+                type=alert_data["type"],
+                category="soil",
+                title=f"[{db_plant.crop_name.title()}] {title}",
+                message=alert_data["message"],
+                action_url=f"/my-farms",
+            ))
     
     db.commit()
     
+    # Broadcast via SSE, push, and email after commit (non-blocking)
+    from app.services.email_service import send_alert_email
+    
+    for alert_data in generated_alerts:
+        title = "Crop Alert" if alert_data["type"] != "critical" else "⚠️ Critical Crop Alert"
+        payload = {
+            "type": "alert",
+            "alert_type": alert_data["type"],
+            "title": title,
+            "message": alert_data["message"],
+            "action_url": "/monitoring",
+        }
+        # SSE: instant in-app delivery
+        asyncio.create_task(
+            notification_service.broadcast_sse(str(current_user.id), payload)
+        )
+        # Web Push: for critical alerts only (high signal, avoids notification fatigue)
+        if alert_data["type"] == "critical":
+            asyncio.create_task(
+                notification_service.send_push(db, current_user.id, title, alert_data["message"], "/monitoring")
+            )
+        # Email: for warning + critical alerts
+        if alert_data["type"] in ("warning", "critical"):
+            asyncio.create_task(send_alert_email(
+                to_email=current_user.email,
+                title=title,
+                message=alert_data["message"],
+                alert_type=alert_data["type"],
+                crop_name=db_plant.crop_name,
+                farm_name=getattr(farm_obj, "name", ""),
+                action_url="/monitoring",
+            ))
+        # Also email the agronomist for critical alerts on managed farms
+        if alert_data["type"] == "critical" and farm_obj and farm_obj.agronomist_id:
+            agro_user = db.query(User).filter(User.id == farm_obj.agronomist_id).first()
+            if agro_user:
+                asyncio.create_task(send_alert_email(
+                    to_email=agro_user.email,
+                    title=f"[{db_plant.crop_name.title()}] {title}",
+                    message=alert_data["message"],
+                    alert_type=alert_data["type"],
+                    crop_name=db_plant.crop_name,
+                    farm_name=getattr(farm_obj, "name", ""),
+                    action_url="/my-farms",
+                ))
+                asyncio.create_task(
+                    notification_service.broadcast_sse(str(farm_obj.agronomist_id), payload)
+                )
+    
+    db.commit()
+
+    # Send soil test result emails to farmer and managing agronomist (non-blocking)
+    from app.services.email_service import send_soil_test_email
+    from app.models.farm import Farm as _Farm
+
+    _fertilizer_recs = [
+        {"type": r["type"], "quantity_kg": r["total_kg"], "reason": r["reason"]}
+        for r in fertilizers
+    ]
+    _farm = db.query(_Farm).filter(_Farm.id == db_plant.farm_id).first() if db_plant.farm_id else None
+    _farm_name = getattr(_farm, "name", "")
+
+    asyncio.create_task(send_soil_test_email(
+        to_email=current_user.email,
+        full_name=current_user.full_name,
+        crop_name=db_plant.crop_name,
+        farm_name=_farm_name,
+        growth_stage=stage,
+        health_score=score,
+        health_status=status,
+        n=data.n, p=data.p, k=data.k,
+        ph=data.ph, moisture=data.moisture, temperature=data.temperature,
+        fertilizer_recs=_fertilizer_recs,
+        is_agronomist=False,
+    ))
+
+    if _farm and _farm.agronomist_id:
+        _agro = db.query(User).filter(User.id == _farm.agronomist_id).first()
+        if _agro:
+            asyncio.create_task(send_soil_test_email(
+                to_email=_agro.email,
+                full_name=_agro.full_name,
+                crop_name=db_plant.crop_name,
+                farm_name=_farm_name,
+                growth_stage=stage,
+                health_score=score,
+                health_status=status,
+                n=data.n, p=data.p, k=data.k,
+                ph=data.ph, moisture=data.moisture, temperature=data.temperature,
+                fertilizer_recs=_fertilizer_recs,
+                is_agronomist=True,
+            ))
+
     # 7. Return full response (supporting both legacy keys and requested response format keys)
     return {
         # Legacy keys
@@ -152,7 +267,7 @@ async def add_monitoring(plant_id: UUID, data: mon_schemas.MonitoringCreate, db:
         "fertilizer_recommendations": [
             {
                 "type": r["type"],
-                "quantity_kg": r["kg"],
+                "quantity_kg": r["total_kg"],
                 "reason": r["reason"]
             } for r in fertilizers
         ],

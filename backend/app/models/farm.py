@@ -39,6 +39,7 @@ class ManagedFarmer(Base):
     agronomist_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     farm_id = Column(UUID(as_uuid=True), ForeignKey("farms.id"), nullable=True)
     full_name = Column(String, nullable=False)
+    email = Column(String, nullable=True)
     phone = Column(String, nullable=True)
     location = Column(String, nullable=True)
     notes = Column(String, nullable=True)

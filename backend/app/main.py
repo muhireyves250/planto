@@ -1,4 +1,4 @@
-import time
+import asyncio
 import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -43,8 +43,14 @@ async def startup_event():
                 logger.error("DB unavailable after 5 attempts — server starting anyway: %s", e)
                 break
             logger.warning("DB connection attempt %d failed, retrying in 3s...", attempt)
-            time.sleep(3)
+            await asyncio.sleep(3)
     start_mqtt_client()
+    # Log SMTP status clearly so deployment issues are obvious in server logs
+    from app.core.config import settings as _s
+    if _s.SMTP_USER and _s.SMTP_PASSWORD:
+        logger.info("SMTP configured — emails will be sent via %s:%s as %s", _s.SMTP_HOST, _s.SMTP_PORT, _s.SMTP_USER)
+    else:
+        logger.warning("SMTP NOT configured — set SMTP_USER and SMTP_PASSWORD env vars or emails will not be sent")
     from app.services.report_service import send_all_weekly_reports
     _scheduler.add_job(
         send_all_weekly_reports,
@@ -87,6 +93,13 @@ def _run_migrations():
         ]:
             try:
                 conn.execute(text(f"ALTER TABLE alerts ADD COLUMN IF NOT EXISTS {col} {typ}"))
+            except Exception:
+                pass
+
+        # Add email to managed_farmers
+        for col, typ in [("email", "VARCHAR")]:
+            try:
+                conn.execute(text(f"ALTER TABLE managed_farmers ADD COLUMN IF NOT EXISTS {col} {typ}"))
             except Exception:
                 pass
         conn.commit()

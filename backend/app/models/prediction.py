@@ -16,9 +16,11 @@ class Prediction(Base):
     p = Column(Float, nullable=False)
     k = Column(Float, nullable=False)
     temperature = Column(Float, nullable=False)
-    humidity = Column(Float, nullable=False)
+    humidity = Column(Float, nullable=True)   # legacy — kept for old rows
     ph = Column(Float, nullable=False)
-    rainfall = Column(Float, nullable=False)
+    rainfall = Column(Float, nullable=True)   # legacy — kept for old rows
+    ec = Column(Float, nullable=True)
+    moisture = Column(Float, nullable=True)
     
     predicted_crop = Column(String, index=True, nullable=False)
     confidence = Column(Float, nullable=False)

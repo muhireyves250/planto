@@ -94,7 +94,9 @@ const calculateGuestIntelligence = (cropName, inputValues) => {
 };
 
 const SoilTest = ({ 
-  user, 
+  user,
+  impersonatedFarmId,
+  impersonatedFarm,
   params = { mode: 'prediction', plantId: null, cropName: '' }, 
   setParams, 
   setActiveTab,
@@ -120,7 +122,9 @@ const SoilTest = ({
       agronomistApi.getFarms().then(farms => {
         setManagedFarms(farms || []);
         const urlFarmId = searchParams.get('farm_id');
-        if (urlFarmId && farms?.some(f => f.farm_id === urlFarmId)) {
+        if (impersonatedFarmId) {
+          setSelectedFarmId(impersonatedFarmId);
+        } else if (urlFarmId && farms?.some(f => f.farm_id === urlFarmId)) {
           setSelectedFarmId(urlFarmId);
         }
       }).catch(() => {});
@@ -134,8 +138,7 @@ const SoilTest = ({
     ph: '',
     moisture: '',
     temperature: '',
-    humidity: '',
-    rainfall: ''
+    ec: ''
   });
 
   const [formErrors, setFormErrors] = useState({});
@@ -165,8 +168,7 @@ const SoilTest = ({
             ph: String(result.data.ph),
             moisture: String(result.data.moisture),
             temperature: String(result.data.temperature),
-            humidity: String(result.data.humidity),
-            rainfall: String(result.data.rainfall)
+            ec: String(result.data.ec)
           }));
         }
       } catch {
@@ -212,15 +214,9 @@ const SoilTest = ({
     checkNumber(formData.k, 'k', 0, 500);
     checkNumber(formData.ph, 'ph', 0, 14);
 
-    if (isMonitoring) {
-      checkNumber(formData.moisture, 'moisture', 0, 100);
-      checkNumber(formData.temperature, 'temperature', -10, 60);
-      checkNumber(formData.humidity, 'humidity', 0, 100);
-    } else {
-      checkNumber(formData.temperature, 'temperature', -10, 60);
-      checkNumber(formData.humidity, 'humidity', 0, 100);
-      checkNumber(formData.rainfall, 'rainfall', 0, 1000);
-    }
+    checkNumber(formData.moisture, 'moisture', 0, 100);
+    checkNumber(formData.temperature, 'temperature', -10, 60);
+    checkNumber(formData.ec, 'ec', 0, 10);
 
     setFormErrors(errors);
     return isValid;
@@ -242,8 +238,8 @@ const SoilTest = ({
         setFormData(prev => ({
           ...prev,
           temperature: data.temp.toString(),
-          humidity: data.humidity.toString(),
-          rainfall: (data.rainfall || 100).toString()
+          moisture: '50', // placeholder if from weather
+          ec: '1.2'       // placeholder
         }));
         if (setToast) {
           setToast({ type: 'success', message: 'Environmental conditions updated!' });
@@ -360,9 +356,9 @@ const SoilTest = ({
           p: parseFloat(formData.p),
           k: parseFloat(formData.k),
           ph: parseFloat(formData.ph),
+          moisture: parseFloat(formData.moisture),
           temperature: parseFloat(formData.temperature),
-          humidity: parseFloat(formData.humidity),
-          rainfall: parseFloat(formData.rainfall),
+          ec: parseFloat(formData.ec),
         };
 
         const predUrl = selectedFarmId
@@ -404,15 +400,15 @@ const SoilTest = ({
     setActiveTab('monitoring');
   };
 
-  const fieldsNeeded = isMonitoring
-    ? ['n', 'p', 'k', 'ph', 'moisture', 'temperature', 'humidity']
-    : ['n', 'p', 'k', 'ph', 'temperature', 'humidity', 'rainfall'];
+  const fieldsNeeded = ['n', 'p', 'k', 'ph', 'moisture', 'temperature', 'ec'];
   const filledCount = fieldsNeeded.filter(f => formData[f] !== '').length;
   const formProgress = Math.round((filledCount / fieldsNeeded.length) * 100);
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
-  const firstName = user?.full_name?.split(' ')[0] || 'Farmer';
+  const firstName = impersonatedFarm
+    ? (impersonatedFarm.farmer?.full_name?.split(' ')[0] || impersonatedFarm.farm_name || 'Farmer')
+    : (user?.full_name?.split(' ')[0] || 'Farmer');
 
   const bannerTitle = isMonitoring
     ? `Soil Update — ${params.cropName || 'Crop'}`
@@ -519,7 +515,7 @@ const SoilTest = ({
           </div>
 
           {/* Agronomist: farm selector */}
-          {user?.role === 'agronomist' && !isMonitoring && (
+          {user?.role === 'agronomist' && !impersonatedFarmId && !isMonitoring && (
             <div style={{ marginBottom: '1.25rem' }} className="animate-2">
               <div style={{ background: '#fff', borderRadius: '16px', border: '1.5px solid #e2e8f0', padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
                 <div style={{ width: 40, height: 40, borderRadius: '12px', background: 'var(--green-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -634,21 +630,21 @@ const SoilTest = ({
                     </div>
                     
                     <div>
-                      <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'rgba(255,255,255,0.7)', marginBottom: '0.2rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Humidity (%)</label>
+                      <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'rgba(255,255,255,0.7)', marginBottom: '0.2rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Soil Moisture (%)</label>
                       <div className="pro-input-wrapper">
                         <div className="pro-input-icon"><Droplets size={16} /></div>
-                        <input type="text" name="humidity" className="pro-input" value={formData.humidity} onChange={handleInputChange} placeholder="e.g. 82.0" />
+                        <input type="text" name="moisture" className="pro-input" value={formData.moisture} onChange={handleInputChange} placeholder="e.g. 70" />
                       </div>
-                      {formErrors.humidity && <div style={{ color: '#f87171', fontSize: '0.65rem', marginTop: '0.2rem', fontWeight: 600 }}>{formErrors.humidity}</div>}
+                      {formErrors.moisture && <div style={{ color: '#f87171', fontSize: '0.65rem', marginTop: '0.2rem', fontWeight: 600 }}>{formErrors.moisture}</div>}
                     </div>
                     
                     <div style={{ gridColumn: '1 / -1' }}>
-                      <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'rgba(255,255,255,0.7)', marginBottom: '0.2rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Rainfall Amount (mm)</label>
+                      <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'rgba(255,255,255,0.7)', marginBottom: '0.2rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Electrical Conductivity (ec)</label>
                       <div className="pro-input-wrapper">
-                        <div className="pro-input-icon"><CloudRain size={16} /></div>
-                        <input type="text" name="rainfall" className="pro-input" value={formData.rainfall} onChange={handleInputChange} placeholder="e.g. 200" />
+                        <div className="pro-input-icon"><Activity size={16} /></div>
+                        <input type="text" name="ec" className="pro-input" value={formData.ec} onChange={handleInputChange} placeholder="e.g. 1.2" />
                       </div>
-                      {formErrors.rainfall && <div style={{ color: '#f87171', fontSize: '0.65rem', marginTop: '0.2rem', fontWeight: 600 }}>{formErrors.rainfall}</div>}
+                      {formErrors.ec && <div style={{ color: '#f87171', fontSize: '0.65rem', marginTop: '0.2rem', fontWeight: 600 }}>{formErrors.ec}</div>}
                     </div>
                   </div>
                 </div>
@@ -743,12 +739,12 @@ const SoilTest = ({
                       {formErrors.temperature && <div style={{ color: '#ef4444', fontSize: '0.65rem', marginTop: '0.2rem', fontWeight: 600 }}>{formErrors.temperature}</div>}
                     </div>
                     <div>
-                      <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '0.2rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Humidity (%)</label>
+                      <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '0.2rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Electrical Cond. (ec)</label>
                       <div className="pro-input-wrapper">
-                        <div className="pro-input-icon"><Droplets size={16} /></div>
-                        <input type="text" name="humidity" className="pro-input" value={formData.humidity} onChange={handleInputChange} placeholder="e.g. 65" />
+                        <div className="pro-input-icon"><Activity size={16} /></div>
+                        <input type="text" name="ec" className="pro-input" value={formData.ec} onChange={handleInputChange} placeholder="e.g. 1.5" />
                       </div>
-                      {formErrors.humidity && <div style={{ color: '#ef4444', fontSize: '0.65rem', marginTop: '0.2rem', fontWeight: 600 }}>{formErrors.humidity}</div>}
+                      {formErrors.ec && <div style={{ color: '#ef4444', fontSize: '0.65rem', marginTop: '0.2rem', fontWeight: 600 }}>{formErrors.ec}</div>}
                     </div>
                   </>
                 )}

@@ -9,8 +9,9 @@ import pickle
 import os
 
 # Set paths
-DATA_PATH = r"d:\AI\Crop_recommendation_combined.csv"
-MODEL_PATH = r"d:\AI\model.pkl"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_PATH = os.path.join(BASE_DIR, "Crop_recommendation_sensor.csv")
+MODEL_PATH = os.path.join(BASE_DIR, "model.pkl")
 
 def main():
     print("--- AI-Based Soil Testing and Crop Recommendation System ---")
@@ -39,8 +40,9 @@ def main():
     sns.heatmap(numeric_df.corr(), annot=True, cmap='coolwarm', fmt='.2f')
     plt.title('Correlation Matrix of Soil and Environment Features')
     plt.tight_layout()
-    plt.savefig(r"d:\AI\correlation_heatmap.png")
-    print("Saved correlation_heatmap.png")
+    heatmap_path = os.path.join(BASE_DIR, "correlation_heatmap.png")
+    plt.savefig(heatmap_path)
+    print(f"Saved {heatmap_path}")
     
     print("\n3. Data Preprocessing & Splitting...")
     # Features (N, P, K, temperature, humidity, ph, rainfall)

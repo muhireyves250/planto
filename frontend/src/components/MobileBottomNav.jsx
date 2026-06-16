@@ -8,9 +8,24 @@ const tabs = [
   { to: '/settings',    icon: User },
 ];
 
-export default function MobileBottomNav() {
+export default function MobileBottomNav({ user, impersonatedFarmId }) {
   const { pathname } = useLocation();
   const active = (to) => pathname === to || pathname.startsWith(to);
+
+  const tabs = user?.role === 'agronomist' && !impersonatedFarmId
+    ? [
+        { to: '/my-farms', icon: Home, label: 'My Farms' },
+        { to: '/settings', icon: User, label: 'Settings' }
+      ]
+    : [
+        { to: '/dashboard',   icon: Home, label: 'Home' },
+        { to: '/monitoring',  icon: Sprout, label: 'Monitoring' },
+        { to: '/crop-status', icon: Calendar, label: 'Status' },
+        { to: '/settings',    icon: User, label: 'Settings' },
+      ];
+
+  // Hide bottom nav completely on login screen etc if needed
+  if (!user) return null;
 
   return (
     <div className="mob-nav-wrap">

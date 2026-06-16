@@ -10,7 +10,7 @@ import os
 # Set paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, "model.pkl")
-DATA_PATH = os.path.join(BASE_DIR, "Crop_recommendation_combined.csv")
+DATA_PATH = os.path.join(BASE_DIR, "Crop_recommendation_sensor.csv")
 
 def main():
     print("--- Professional Accuracy Check (Visual Confusion Matrix) ---")

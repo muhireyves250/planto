@@ -7,15 +7,19 @@ warnings.filterwarnings('ignore')
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, "model.pkl")
-DATA_PATH = os.path.join(BASE_DIR, "Crop_recommendation_combined.csv")
+DATA_PATH = os.path.join(BASE_DIR, "Crop_recommendation_sensor.csv")
 
 _CROP_REQUIREMENTS = None
+_MODEL = None
 
 def load_model():
-    if not os.path.exists(MODEL_PATH):
-        raise FileNotFoundError(f"Model file not found at {MODEL_PATH}")
-    with open(MODEL_PATH, 'rb') as f:
-        return pickle.load(f)
+    global _MODEL
+    if _MODEL is None:
+        if not os.path.exists(MODEL_PATH):
+            raise FileNotFoundError(f"Model file not found at {MODEL_PATH}")
+        with open(MODEL_PATH, 'rb') as f:
+            _MODEL = pickle.load(f)
+    return _MODEL
 
 def load_requirements():
     global _CROP_REQUIREMENTS
@@ -122,7 +126,7 @@ def get_remediation_advice(n, p, k, target_crop, role: str = "farmer"):
     return advice_list
 
 
-def predict_crop(n, p, k, temperature, humidity, ph, rainfall, role: str = "farmer"):
+def predict_crop(n, p, k, temperature, ph, ec, moisture, role: str = "farmer"):
     """
     Predict the most suitable crop or recommend resting the land.
     Returns: crop, confidence, advice_list, status
@@ -174,7 +178,7 @@ def predict_crop(n, p, k, temperature, humidity, ph, rainfall, role: str = "farm
             "REST THE LAND"
         )
 
-    features = np.array([[n, p, k, temperature, humidity, ph, rainfall]])
+    features = np.array([[n, p, k, temperature, ph, ec, moisture]])
     probabilities = model.predict_proba(features)[0]
     max_confidence = float(np.max(probabilities))
     class_idx = np.argmax(probabilities)
@@ -201,9 +205,9 @@ def predict_crop(n, p, k, temperature, humidity, ph, rainfall, role: str = "farm
 if __name__ == "__main__":
     print("--- Testing Prediction API ---")
     print("\n[FARMER] Healthy Soil for Rice:")
-    crop, conf, advice, status = predict_crop(90, 42, 43, 20.88, 82.0, 6.5, 202.9, role="farmer")
+    crop, conf, advice, status = predict_crop(90, 42, 43, 20.88, 6.5, 1.2, 85.0, role="farmer")
     print(f"=> {crop} | {conf:.2f} | {status}\n" + "\n".join(f"  {i+1}. {a}" for i, a in enumerate(advice)))
 
     print("\n[AGRONOMIST] Healthy Soil for Rice:")
-    crop, conf, advice, status = predict_crop(90, 42, 43, 20.88, 82.0, 6.5, 202.9, role="agronomist")
+    crop, conf, advice, status = predict_crop(90, 42, 43, 20.88, 6.5, 1.2, 85.0, role="agronomist")
     print(f"=> {crop} | {conf:.2f} | {status}\n" + "\n".join(f"  {i+1}. {a}" for i, a in enumerate(advice)))

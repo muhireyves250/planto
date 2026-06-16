@@ -6,6 +6,7 @@ from datetime import datetime
 
 class ManagedFarmerCreate(BaseModel):
     full_name: str
+    email: Optional[str] = None
     phone: Optional[str] = None
     location: Optional[str] = None
     notes: Optional[str] = None
@@ -18,6 +19,7 @@ class ManagedFarmerCreate(BaseModel):
 
 class ManagedFarmerUpdate(BaseModel):
     full_name: Optional[str] = None
+    email: Optional[str] = None
     phone: Optional[str] = None
     location: Optional[str] = None
     notes: Optional[str] = None
@@ -28,6 +30,7 @@ class ManagedFarmerDB(BaseModel):
     agronomist_id: UUID
     farm_id: Optional[UUID] = None
     full_name: str
+    email: Optional[str] = None
     phone: Optional[str] = None
     location: Optional[str] = None
     notes: Optional[str] = None
@@ -51,6 +54,18 @@ class ManagedFarmerWithFarm(ManagedFarmerDB):
     farm: Optional[FarmSummary] = None
 
 
+class FarmUpdate(BaseModel):
+    farm_name: Optional[str] = None
+    farm_size: Optional[str] = None
+    location: Optional[str] = None
+    soil_type: Optional[str] = None
+    irrigation_type: Optional[str] = None
+    # Farmer contact fields
+    farmer_full_name: Optional[str] = None
+    farmer_email: Optional[str] = None
+    farmer_phone: Optional[str] = None
+
+
 class ManagedFarmDetail(BaseModel):
     farm_id: UUID
     farm_name: str
@@ -59,6 +74,7 @@ class ManagedFarmDetail(BaseModel):
     soil_type: Optional[str] = None
     farmer_name: str
     farmer_phone: Optional[str] = None
+    farmer_email: Optional[str] = None
     farmer_location: Optional[str] = None
     active_crops: int
     health_score: Optional[float] = None

@@ -2874,3 +2874,12 @@ body {
     box-shadow: 0 10px 20px rgba(30, 54, 42, 0.3);
   }
 }
+
+/* Add to frontend/src/index.css */
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+.animate-slideInRight {
+  animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

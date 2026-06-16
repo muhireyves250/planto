@@ -1,29 +1,15 @@
+import json
 import threading
-import random
 import paho.mqtt.client as mqtt
-from app.services.weather.weather_service import weather_service
 
 MQTT_BROKER = "broker.benax.rw"
 MQTT_PORT = 1883
-MQTT_TOPIC = "planto/vibration"
+MQTT_TOPIC = "planto/soil"
 MQTT_USER = "devadmin2"
 MQTT_PASS = "Tw26~wh$Q"
 
-WEATHER_LAT = -1.94
-WEATHER_LNG = 29.87
-
-def _random_soil():
-    return {
-        "n":        round(random.uniform(10, 140), 1),
-        "p":        round(random.uniform(5, 145), 1),
-        "k":        round(random.uniform(5, 205), 1),
-        "ph":       round(random.uniform(5.5, 8.0), 1),
-        "moisture": round(random.uniform(10, 90), 1),
-        "rainfall": round(random.uniform(20, 300), 1),
-    }
-
 _latest_reading = None
-_sensor_vibrating = False
+_sensor_active = False
 _lock = threading.Lock()
 
 
@@ -31,7 +17,7 @@ def get_latest_reading():
     with _lock:
         if _latest_reading is None:
             return None
-        return {**_latest_reading, "active": _sensor_vibrating}
+        return {**_latest_reading, "active": _sensor_active}
 
 
 def _on_connect(client, userdata, flags, rc):
@@ -43,27 +29,35 @@ def _on_connect(client, userdata, flags, rc):
 
 
 def _on_message(client, userdata, msg):
-    global _latest_reading, _sensor_vibrating
+    global _latest_reading, _sensor_active
     payload = msg.payload.decode("utf-8").strip()
     print(f"[MQTT] Received: {payload}")
 
-    if payload == "1":
-        weather = weather_service.get_weather_sync(WEATHER_LAT, WEATHER_LNG)
-        if weather:
-            temp = weather["main"]["temp"]
-            humidity = weather["main"]["humidity"]
-        else:
-            temp = 24.5
-            humidity = 65.0
+    try:
+        data = json.loads(payload)
+
+        # EC arrives in us/cm — convert to mS/cm (dS/m) for the 0–10 form range
+        ec_raw = float(data.get("ec", 0))
+        ec = round(ec_raw / 1000.0, 3) if ec_raw > 10 else round(ec_raw, 3)
+
+        reading = {
+            "n":          round(float(data["nitrogen"]),    1),
+            "p":          round(float(data["phosphorus"]),  1),
+            "k":          round(float(data["potassium"]),   1),
+            "ph":         round(float(data["ph"]),          2),
+            "moisture":   round(float(data["moisture"]),    1),
+            "temperature":round(float(data["temperature"]), 1),
+            "ec":         ec,
+        }
 
         with _lock:
-            _latest_reading = {**_random_soil(), "temperature": temp, "humidity": humidity}
-            _sensor_vibrating = True
-        print(f"[MQTT] Sensor active — reading stored: {_latest_reading}")
-    else:
-        with _lock:
-            _sensor_vibrating = False
-        print("[MQTT] Sensor idle — keeping last reading")
+            _latest_reading = reading
+            _sensor_active = True
+
+        print(f"[MQTT] Soil reading stored: {reading}")
+
+    except (KeyError, ValueError, json.JSONDecodeError) as e:
+        print(f"[MQTT] Failed to parse payload: {e}")
 
 
 def _run_mqtt():

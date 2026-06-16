@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Soil Test Results</title>
+  <style>
+    body { margin: 0; padding: 0; background: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    .wrapper { max-width: 580px; margin: 40px auto; background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
+    .header { background: #1e362a; padding: 28px 32px; text-align: center; }
+    .header h1 { color: #fff; margin: 0 0 4px; font-size: 22px; font-weight: 800; }
+    .header p { color: rgba(255,255,255,0.6); margin: 0; font-size: 13px; }
+    .greeting { padding: 24px 32px 8px; }
+    .greeting h2 { margin: 0 0 4px; font-size: 19px; font-weight: 800; color: #0f172a; }
+    .greeting p { margin: 0; font-size: 14px; color: #64748b; }
+    .section { padding: 20px 32px; border-bottom: 1px solid #f1f5f9; }
+    .section:last-of-type { border-bottom: none; }
+    .section-title { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: #94a3b8; margin: 0 0 14px; }
+    .meta-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+    .meta-chip { background: #f1f5f9; border-radius: 8px; padding: 6px 12px; font-size: 13px; color: #475569; font-weight: 600; }
+    .meta-chip span { color: #94a3b8; font-weight: 400; }
+    .score-row { display: flex; align-items: center; gap: 16px; margin-bottom: 8px; }
+    .score-badge { font-size: 28px; font-weight: 900; }
+    .score-label { font-size: 13px; font-weight: 700; padding: 4px 12px; border-radius: 99px; }
+    .green  { color: #16a34a; }
+    .amber  { color: #d97706; }
+    .red    { color: #dc2626; }
+    .badge-green { background: #dcfce7; color: #16a34a; }
+    .badge-amber { background: #fef3c7; color: #d97706; }
+    .badge-red   { background: #fee2e2; color: #dc2626; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th { text-align: left; font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; padding: 0 0 8px; }
+    td { padding: 8px 0; color: #334155; border-top: 1px solid #f8fafc; }
+    td.val { font-weight: 700; text-align: right; }
+    .rec-box { background: #f0fdf4; border: 1px solid #86efac; border-radius: 12px; padding: 14px 18px; margin-top: 4px; }
+    .rec-box p { margin: 0; font-size: 13px; color: #15803d; line-height: 1.5; }
+    .cta-btn { display: inline-block; background: #16a34a; color: #fff; text-decoration: none; padding: 11px 24px; border-radius: 10px; font-size: 14px; font-weight: 700; }
+    .footer { padding: 16px 32px; background: #f8fafc; text-align: center; font-size: 12px; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1>🌱 Planto</h1>
+      <p>Soil Test Results — {{ test_date }}</p>
+    </div>
+
+    <div class="greeting">
+      <h2>Hi {{ full_name }},</h2>
+      <p>
+        {% if is_agronomist %}
+          A soil test was submitted for <strong>{{ farm_name }}</strong>.
+        {% else %}
+          Your soil test results are ready for <strong>{{ crop_name }}</strong>.
+        {% endif %}
+      </p>
+    </div>
+
+    <!-- Summary -->
+    <div class="section">
+      <div class="section-title">Health Summary</div>
+      <div class="meta-row">
+        <div class="meta-chip"><span>Crop: </span>{{ crop_name }}</div>
+        <div class="meta-chip"><span>Farm: </span>{{ farm_name }}</div>
+        <div class="meta-chip"><span>Stage: </span>{{ growth_stage }}</div>
+      </div>
+      <div class="score-row">
+        <div class="score-badge {{ health_color }}">{{ health_score }}%</div>
+        <span class="score-label {{ 'badge-' + health_color }}">{{ health_status | capitalize }}</span>
+      </div>
+    </div>
+
+    <!-- Soil Readings -->
+    <div class="section">
+      <div class="section-title">Soil Readings</div>
+      <table>
+        <thead><tr><th>Parameter</th><th style="text-align:right">Value</th></tr></thead>
+        <tbody>
+          <tr><td>Nitrogen (N)</td><td class="val">{{ n }} mg/kg</td></tr>
+          <tr><td>Phosphorus (P)</td><td class="val">{{ p }} mg/kg</td></tr>
+          <tr><td>Potassium (K)</td><td class="val">{{ k }} mg/kg</td></tr>
+          <tr><td>pH</td><td class="val">{{ ph }}</td></tr>
+          <tr><td>Moisture</td><td class="val">{{ moisture }}%</td></tr>
+          <tr><td>Temperature</td><td class="val">{{ temperature }}°C</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Fertilizer Recommendations -->
+    {% if fertilizer_recs %}
+    <div class="section">
+      <div class="section-title">Fertilizer Recommendations</div>
+      {% for rec in fertilizer_recs %}
+      <div class="rec-box" style="margin-bottom:8px">
+        <p><strong>{{ rec.type }}</strong> — {{ rec.quantity_kg }} kg<br>{{ rec.reason }}</p>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="section" style="text-align:center;padding:20px 32px">
+      <a href="{{ app_url }}/monitoring" class="cta-btn">View Full Analysis →</a>
+    </div>
+
+    <div class="footer">
+      This email was sent automatically after a soil test was recorded on Planto.
+    </div>
+  </div>
+</body>
+</html>

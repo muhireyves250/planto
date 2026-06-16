@@ -117,6 +117,80 @@ def get_farmer_report_data(user_id: UUID, db: Session) -> dict:
     }
 
 
+def get_farm_report_data(farm_id: UUID, db: Session) -> dict:
+    """Build a farm report by farm_id — used for managed farmers who have no platform account."""
+    crops = (
+        db.query(PlantedCrop)
+        .options(
+            selectinload(PlantedCrop.health_history),
+            selectinload(PlantedCrop.fertilizer_plans),
+            selectinload(PlantedCrop.monitoring_data),
+        )
+        .filter(PlantedCrop.farm_id == farm_id, PlantedCrop.status == "active")
+        .all()
+    )
+
+    today = date.today()
+    crop_rows, upcoming_harvests, fertilizer_rows = [], [], []
+
+    for crop in crops:
+        latest_health = max(crop.health_history, key=lambda h: h.created_at, default=None)
+        if latest_health is not None:
+            score = latest_health.health_score
+            crop_rows.append({"name": crop.crop_name, "health_score": round(score * 100), "health_label": _health_label(score)})
+        else:
+            crop_rows.append({"name": crop.crop_name, "health_score": None, "health_label": "none"})
+
+        if crop.expected_harvest_date:
+            days_left = (crop.expected_harvest_date - today).days
+            if 0 <= days_left <= HARVEST_LOOKAHEAD_DAYS:
+                upcoming_harvests.append({
+                    "name": crop.crop_name,
+                    "expected_harvest_date": crop.expected_harvest_date.strftime("%b %d, %Y"),
+                    "days_remaining": days_left,
+                })
+
+        latest_plan = max(crop.fertilizer_plans, key=lambda p: p.created_at, default=None)
+        if latest_plan:
+            fertilizer_rows.append({
+                "crop_name": crop.crop_name,
+                "urea_kg": latest_plan.urea_kg or 0,
+                "dap_kg": latest_plan.dap_kg or 0,
+                "npk_kg": latest_plan.npk_kg or 0,
+                "nutrient_target": latest_plan.nutrient_target or "",
+            })
+
+    latest_monitoring = (
+        db.query(SoilMonitoring)
+        .join(PlantedCrop, SoilMonitoring.plant_id == PlantedCrop.id)
+        .filter(PlantedCrop.farm_id == farm_id)
+        .order_by(SoilMonitoring.recorded_at.desc())
+        .first()
+    )
+
+    show_soil_reminder, soil_test_days_ago, last_soil_test_date = True, None, None
+    if latest_monitoring:
+        recorded_at = latest_monitoring.recorded_at
+        if recorded_at.tzinfo is None:
+            recorded_at = recorded_at.replace(tzinfo=timezone.utc)
+        days_ago = (datetime.now(timezone.utc) - recorded_at).days
+        soil_test_days_ago = days_ago
+        last_soil_test_date = recorded_at.strftime("%b %d, %Y")
+        show_soil_reminder = days_ago >= SOIL_TEST_REMINDER_DAYS
+
+    upcoming_harvests.sort(key=lambda h: h["days_remaining"])
+
+    return {
+        "crops": crop_rows,
+        "upcoming_harvests": upcoming_harvests,
+        "fertilizer_plans": fertilizer_rows,
+        "show_soil_reminder": show_soil_reminder,
+        "soil_test_days_ago": soil_test_days_ago,
+        "last_soil_test_date": last_soil_test_date,
+        "report_date": today.strftime("%B %d, %Y"),
+    }
+
+
 def get_agronomist_digest_data(agronomist_id: UUID, db: Session) -> list[dict]:
     """Return per-farm summary rows for the agronomist digest email."""
     from app.models.alert import Alert
@@ -180,12 +254,32 @@ def get_agronomist_digest_data(agronomist_id: UUID, db: Session) -> list[dict]:
 async def send_all_weekly_reports() -> None:
     """Scheduler entry point — opens its own DB session, sends all emails."""
     from app.core.database import SessionLocal
+    from app.models.farm import ManagedFarmer
     from app.services.email_service import send_report_email, send_agronomist_digest_email
 
     logger.info("Weekly report job starting")
     try:
         db = SessionLocal()
         try:
+            # Managed farmers (offline, no platform account) who have an email
+            managed = (
+                db.query(ManagedFarmer)
+                .filter(ManagedFarmer.email.isnot(None), ManagedFarmer.farm_id.isnot(None))
+                .all()
+            )
+            for mf in managed:
+                try:
+                    report_data = get_farm_report_data(mf.farm_id, db)
+                    if not report_data["crops"]:
+                        continue
+                    await send_report_email(
+                        to_email=mf.email,
+                        full_name=mf.full_name,
+                        report_data=report_data,
+                    )
+                except Exception as e:
+                    logger.warning("Weekly report failed for managed farmer %s: %s", mf.email, e)
+
             farmers = db.query(User).filter(User.role == "farmer").all()
             for user in farmers:
                 if not user.email:

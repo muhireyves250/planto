@@ -1,6 +1,7 @@
 import React from 'react';
-import { Sprout, ChevronRight, FlaskConical } from 'lucide-react';
+import { Sprout, ChevronRight, FlaskConical, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { monitoringApi } from '../../api/monitoringApi';
 
 function getDaysGrowing(plantingDate) {
   if (!plantingDate) return null;
@@ -126,9 +127,37 @@ export default function ActiveCropsSummary({ crops }) {
                   {days !== null ? `${days}d growing` : 'Unknown start'} · {lastTest}
                 </div>
               </div>
-              <div style={{ fontSize: '0.7rem', fontWeight: 800, color: score !== null ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.3)', flexShrink: 0 }}>
+              <div style={{ fontSize: '0.7rem', fontWeight: 800, color: score !== null ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.3)', flexShrink: 0, paddingRight: '0.5rem' }}>
                 {score !== null ? `${Math.round(score)}/100` : 'No data'}
               </div>
+              <button
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  if (window.confirm(`Are you sure you want to delete ${name}?`)) {
+                    try {
+                      await monitoringApi.deleteCrop(crop.id);
+                      window.location.reload();
+                    } catch (err) {
+                      alert('Failed to delete crop');
+                    }
+                  }
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'rgba(255,255,255,0.4)',
+                  cursor: 'pointer',
+                  padding: '0.2rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                onMouseOver={(e) => e.currentTarget.style.color = '#ef4444'}
+                onMouseOut={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.4)'}
+                title="Delete Crop"
+              >
+                <Trash2 size={16} />
+              </button>
             </div>
           );
         })}

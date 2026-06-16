@@ -11,6 +11,7 @@ from app.schemas.agronomist import (
     ManagedFarmerUpdate,
     ManagedFarmerDB,
     ManagedFarmerWithFarm,
+    FarmUpdate,
 )
 from app.repositories import agronomist_repo
 
@@ -94,10 +95,9 @@ async def list_managed_farms(
         active_crops = [c for c in (farm.planted_crops or []) if c.status == "active"]
         latest_health = None
         for crop in active_crops:
-            if crop.health_history:
-                score = sorted(crop.health_history, key=lambda h: h.created_at, reverse=True)[0].health_score
-                if latest_health is None or score > latest_health:
-                    latest_health = score
+            h = getattr(crop, "_latest_health", None)
+            if h and (latest_health is None or h.health_score > latest_health):
+                latest_health = h.health_score
 
         result.append({
             "farm_id": str(farm.id),
@@ -105,9 +105,12 @@ async def list_managed_farms(
             "farm_size": farm.farm_size,
             "location": farm.location,
             "soil_type": farm.soil_type,
+            "irrigation_type": farm.irrigation_type,
             "created_at": farm.created_at,
+            "farmer_id": str(farm.managed_farmer.id) if farm.managed_farmer else None,
             "farmer_name": farm.managed_farmer.full_name if farm.managed_farmer else None,
             "farmer_phone": farm.managed_farmer.phone if farm.managed_farmer else None,
+            "farmer_email": farm.managed_farmer.email if farm.managed_farmer else None,
             "active_crops": len(active_crops),
             "health_score": latest_health,
         })
@@ -127,9 +130,9 @@ async def get_managed_farm_detail(
 
     crops = []
     for crop in (farm.planted_crops or []):
-        latest_monitoring = sorted(crop.monitoring_data, key=lambda m: m.recorded_at, reverse=True)[0] if crop.monitoring_data else None
-        latest_health = sorted(crop.health_history, key=lambda h: h.created_at, reverse=True)[0] if crop.health_history else None
-        latest_plan = sorted(crop.fertilizer_plans, key=lambda p: p.created_at, reverse=True)[0] if crop.fertilizer_plans else None
+        latest_monitoring = getattr(crop, "_latest_monitoring", None)
+        latest_health = getattr(crop, "_latest_health", None)
+        latest_plan = getattr(crop, "_latest_plan", None)
 
         crops.append({
             "id": str(crop.id),
@@ -163,9 +166,24 @@ async def get_managed_farm_detail(
         "farmer": {
             "id": str(farm.managed_farmer.id),
             "full_name": farm.managed_farmer.full_name,
+            "email": farm.managed_farmer.email,
             "phone": farm.managed_farmer.phone,
             "location": farm.managed_farmer.location,
             "notes": farm.managed_farmer.notes,
         } if farm.managed_farmer else None,
         "crops": crops,
     }
+
+
+@router.patch("/farms/{farm_id}")
+async def update_managed_farm(
+    farm_id: UUID,
+    data: FarmUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(role_required(["agronomist", "admin"])),
+):
+    """Update farm details and/or farmer contact info."""
+    updated = agronomist_repo.update_managed_farm(db, farm_id, current_user.id, data)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Farm not found or not under your management")
+    return {"ok": True}

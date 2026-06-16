@@ -8,15 +8,18 @@ class SoilFeatures(BaseModel):
     p: float
     k: float
     temperature: float
-    humidity: float
+    ec: float
     ph: float
-    rainfall: float
+    moisture: float
 
 class PredictionCreate(SoilFeatures):
     user_id: Optional[UUID] = None
     farm_id: Optional[UUID] = None
     predicted_crop: str
     confidence: float
+    # legacy fields — optional so old and new clients both work
+    humidity: Optional[float] = None
+    rainfall: Optional[float] = None
 
 class PredictionResponse(BaseModel):
     success: bool
@@ -30,5 +33,8 @@ class PredictionResponse(BaseModel):
 class PredictionDB(PredictionCreate):
     id: UUID
     created_at: datetime
+    # legacy rows may have NULL ec/moisture — override required fields from SoilFeatures
+    ec: Optional[float] = None
+    moisture: Optional[float] = None
 
     model_config = ConfigDict(from_attributes=True)

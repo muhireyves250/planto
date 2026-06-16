@@ -1,4 +1,4 @@
-import React, { useState, lazy, Suspense } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { useNavigate, useLocation, Routes, Route, Navigate, Link } from 'react-router-dom';
 import LandingPage from './LandingPage';
 import AuthPage from './AuthPage';
@@ -6,13 +6,17 @@ import ActiveCropsSummary from './components/dashboard/ActiveCropsSummary';
 import TodayActions from './components/dashboard/TodayActions';
 import MobileDashboard from './components/MobileDashboard';
 import MobileBottomNav from './components/MobileBottomNav';
+import FarmerDashboardView from './components/dashboard/FarmerDashboardView';
 
 const Reports = lazy(() => import('./Reports'));
 const Settings = lazy(() => import('./Settings'));
 const Monitoring = lazy(() => import('./pages/Monitoring'));
 const SoilTest = lazy(() => import('./pages/SoilTest'));
 const AgronomistDashboard = lazy(() => import('./pages/AgronomistDashboard'));
+import { useNotifications } from './hooks/useNotifications';
+import NotificationCenter from './components/NotificationCenter';
 import { monitoringApi } from './api/monitoringApi';
+import { agronomistApi } from './api/agronomistApi';
 import { farmApi, weatherApi, alertApi } from './api/farmApi';
 import { getCached, setCached } from './api/cache';
 import {
@@ -34,8 +38,10 @@ import {
   Zap,
   Wind,
   LogOut,
+  Mail,
   History,
-  Settings as LucideSettings
+  Settings as LucideSettings,
+  ArrowLeft
 } from 'lucide-react';
 
 
@@ -45,8 +51,7 @@ function App() {
   const [restChoice, setRestChoice] = useState(null); // null | 'plant' | 'rest'
   const [locationActive, setLocationActive] = useState(true);
   const [toast, setToast] = useState(null);
-  const [alerts, setAlerts] = useState([]);
-  const [unreadAlertsCount, setUnreadAlertsCount] = useState(0);
+  // Alert states managed by useNotifications hook now
   const [farmsCount, setFarmsCount] = useState(0);
   const [cropsCount, setCropsCount] = useState(0);
   const [crops, setCrops] = useState([]);
@@ -64,6 +69,9 @@ function App() {
     }
   });
   
+  const notifications = useNotifications(user);
+  const { alerts, unread: unreadAlertsCount, panelOpen, setPanelOpen } = notifications;
+
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     try {
       const savedUser = localStorage.getItem('planto_user');
@@ -80,10 +88,21 @@ function App() {
   const setActiveTab = (tab) => navigate(`/${tab}`);
   const [headerActions, setHeaderActions] = useState(null);
   const [soilTestParams, setSoilTestParams] = useState({ mode: 'prediction', plantId: null, cropName: '' });
+  const [impersonatedFarmId, setImpersonatedFarmId] = useState(() => sessionStorage.getItem('planto_impersonated_farm_id') || null);
+  const [impersonatedFarm, setImpersonatedFarm] = useState(null);
   const [weatherData, setWeatherData] = useState(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [reportModal, setReportModal] = useState(null); // null | 'success' | 'error'
+
+  useEffect(() => {
+    if (impersonatedFarmId) {
+      sessionStorage.setItem('planto_impersonated_farm_id', impersonatedFarmId);
+    } else {
+      sessionStorage.removeItem('planto_impersonated_farm_id');
+    }
+  }, [impersonatedFarmId]);
 
   const confirmLogout = () => setShowLogoutModal(true);
 
@@ -184,57 +203,64 @@ function App() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const fetchAlerts = async () => {
-    if (!isAuthenticated) return;
-    try {
-      const cached = getCached('alerts');
-      if (cached) { setAlerts(cached); setUnreadAlertsCount(cached.filter(a => !a.is_read).length); }
-      const data = await alertApi.getAlerts();
-      setAlerts(data);
-      setUnreadAlertsCount(data.filter(a => !a.is_read).length);
-      setCached('alerts', data);
-    } catch (err) {
-      console.error('Failed to fetch alerts:', err);
-      if (err.status === 401) handleLogout();
-    }
-  };
-
   const fetchDashboardStats = async () => {
     if (!isAuthenticated || !user?.id) return;
     try {
-      const cacheKey = `dashboard_${user.id}`;
-      const cached = getCached(cacheKey);
-      if (cached) {
-        setFarmsCount(cached.farmsCount);
-        setCropsCount(cached.cropsCount);
-        setCrops(cached.crops);
-        setLatestHealthScore(cached.latestHealthScore);
-      }
-
-      const [farmsData, cropsData] = await Promise.all([
-        farmApi.getFarms(),
-        monitoringApi.getMyCrops(user.id)
-      ]);
-      setFarmsCount(farmsData.length);
-      setCropsCount(cropsData.length);
-      setCrops(cropsData);
-
+      let farmsData = [];
+      let cropsData = [];
+      let firstFarm = null;
       let bestScore = null;
-      let bestDate = null;
-      for (const crop of cropsData) {
-        if (crop.health_history?.length) {
-          const last = crop.health_history[crop.health_history.length - 1];
-          if (!bestDate || new Date(last.created_at) > new Date(bestDate)) {
-            bestDate = last.created_at;
-            bestScore = last.health_score ?? null;
+
+      if (impersonatedFarmId) {
+        const farm = await agronomistApi.getFarmDetail(impersonatedFarmId);
+        setImpersonatedFarm(farm);
+        firstFarm = farm;
+        farmsData = [farm];
+        cropsData = farm.crops || [];
+        setFarmsCount(1);
+        setCropsCount(farm.active_crops || cropsData.length);
+        setCrops(cropsData);
+        bestScore = farm.health_score ?? null;
+        setLatestHealthScore(bestScore);
+        // Note: Agronomist viewing farm alerts could be handled by a specific hook.
+        // For now, useNotifications handles the currently logged-in user's alerts.
+      } else {
+        const cacheKey = `dashboard_${user.id}`;
+        const cached = getCached(cacheKey);
+        if (cached) {
+          setFarmsCount(cached.farmsCount);
+          setCropsCount(cached.cropsCount);
+          setCrops(cached.crops);
+          setLatestHealthScore(cached.latestHealthScore);
+        }
+
+        const [fetchedFarms, fetchedCrops] = await Promise.all([
+          farmApi.getFarms(),
+          monitoringApi.getMyCrops(user.id)
+        ]);
+        farmsData = fetchedFarms;
+        cropsData = fetchedCrops;
+        setFarmsCount(farmsData.length);
+        setCropsCount(cropsData.length);
+        setCrops(cropsData);
+
+        let bestDate = null;
+        for (const crop of cropsData) {
+          if (crop.health_history?.length) {
+            const last = crop.health_history[crop.health_history.length - 1];
+            if (!bestDate || new Date(last.created_at) > new Date(bestDate)) {
+              bestDate = last.created_at;
+              bestScore = last.health_score ?? null;
+            }
           }
         }
+        setLatestHealthScore(bestScore);
+        setCached(cacheKey, { farmsCount: farmsData.length, cropsCount: cropsData.length, crops: cropsData, latestHealthScore: bestScore });
+        firstFarm = farmsData[0];
       }
-      setLatestHealthScore(bestScore);
-      setCached(cacheKey, { farmsCount: farmsData.length, cropsCount: cropsData.length, crops: cropsData, latestHealthScore: bestScore });
 
       // Weather: show cached immediately, refresh in background
-      const firstFarm = farmsData[0];
+      // firstFarm is already defined above
       const cachedWeather = getCached('weather');
       if (cachedWeather) {
         setWeatherData(cachedWeather);
@@ -335,9 +361,9 @@ function App() {
 
   React.useEffect(() => {
     if (isAuthenticated) {
-      Promise.all([fetchAlerts(), fetchDashboardStats()]);
+      fetchDashboardStats();
       const interval = setInterval(() => {
-        Promise.all([fetchAlerts(), fetchDashboardStats()]);
+        fetchDashboardStats();
       }, 30000);
       return () => clearInterval(interval);
     } else {
@@ -345,7 +371,7 @@ function App() {
       setCropsCount(guestCrops.length);
       setFarmsCount(0);
     }
-  }, [isAuthenticated, user?.id]);
+  }, [isAuthenticated, user?.id, impersonatedFarmId]);
 
   React.useEffect(() => {
     setHeaderActions(null);
@@ -435,19 +461,23 @@ function App() {
             Planto
           </div>
           <div className="nav-links">
-            {user?.role === 'agronomist' ? (
+            {user?.role === 'agronomist' && !impersonatedFarmId ? (
               <>
                 <Link to="/my-farms" className={`nav-item ${activeTab === 'my-farms' ? 'active' : ''}`}>My Farms</Link>
-                <Link to="/soil-test" className={`nav-item ${activeTab === 'soil-test' ? 'active' : ''}`}>Soil Test</Link>
                 <Link to="/settings" className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`}>Settings</Link>
               </>
-            ) : (user?.role === 'farmer' || user?.role === 'admin') && (
+            ) : (user?.role === 'farmer' || user?.role === 'admin' || impersonatedFarmId) && (
               <>
+                {impersonatedFarmId && (
+                  <button onClick={() => { setImpersonatedFarmId(null); setImpersonatedFarm(null); navigate('/my-farms'); }} className="nav-item" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1.5px solid rgba(239, 68, 68, 0.2)', fontWeight: 800, padding: '0.4rem 0.8rem', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', marginRight: '0.5rem' }}>
+                    <ArrowLeft size={14} /> Exit Farm
+                  </button>
+                )}
                 <Link to="/dashboard" className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}>Home</Link>
-                {user?.role === 'farmer' && <Link to="/soil-test" className={`nav-item ${activeTab === 'soil-test' ? 'active' : ''}`}>Soil Test</Link>}
+                <Link to="/soil-test" className={`nav-item ${activeTab === 'soil-test' ? 'active' : ''}`}>Soil Test</Link>
                 <Link to="/monitoring" className={`nav-item ${activeTab === 'monitoring' ? 'active' : ''}`}>Monitoring</Link>
                 <Link to="/crop-status" className={`nav-item ${activeTab === 'crop-status' ? 'active' : ''}`}>Crop Status</Link>
-                <Link to="/settings" className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`}>Settings</Link>
+                {(!impersonatedFarmId) && <Link to="/settings" className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`}>Settings</Link>}
               </>
             )}
           </div>
@@ -491,30 +521,8 @@ function App() {
             </div>
           }>
           <Routes>
-            <Route path="/soil-test" element={
-              <SoilTest
-                user={user}
-                params={soilTestParams}
-                setParams={setSoilTestParams}
-                setActiveTab={setActiveTab}
-                setHeaderActions={setHeaderActions}
-                setResult={(r) => { setRestChoice(null); setResult(r); }}
-                setToast={setToast}
-              />
-            } />
-            <Route path="/crop-status" element={<Reports user={user} setHeaderActions={setHeaderActions} />} />
-            <Route path="/monitoring" element={
-              <Monitoring
-                user={user}
-                setActiveTab={setActiveTab}
-                setSoilTestParams={setSoilTestParams}
-                setHeaderActions={setHeaderActions}
-              />
-            } />
-            <Route path="/settings" element={<Settings user={user} setUser={setUser} setHeaderActions={setHeaderActions} onLogout={confirmLogout} />} />
-            {user?.role === 'agronomist' && (
-              <Route path="/my-farms" element={<AgronomistDashboard user={user} setHeaderActions={setHeaderActions} />} />
-            )}
+
+
 <Route path="/dashboard" element={(() => {
               if (window.innerWidth <= 768) return (
                 <MobileDashboard
@@ -548,164 +556,38 @@ function App() {
               })();
 
               return (
-            <div className="dashboard-view animate-2" style={{ paddingTop: 0 }}>
-              {/* Section 1 — Personalised Banner */}
-              <div className="pro-welcome-banner farmer-banner">
-                <div className="banner-content">
-                  <h2>{greeting}, {firstName}</h2>
-                  <p>{bannerSubtitle}</p>
-                </div>
-                <div className="banner-icon">
-                  <Sprout size={120} color="rgba(255,255,255,0.1)" />
-                </div>
-              </div>
-
-              {/* Section 2 — Stats Strip */}
-              <div className="stats-strip animate-1">
-                <div className="stat-pill-card">
-                  <div className="stat-icon-circle blue-soft"><Layers size={20} color="#3b82f6" /></div>
-                  <div className="stat-data">
-                    <span className="stat-label">My Farms</span>
-                    <span className="stat-main">{farmsCount} {farmsCount === 1 ? 'Farm' : 'Farms'}</span>
-                  </div>
-                </div>
-                <div className="stat-pill-card">
-                  <div className="stat-icon-circle green-soft"><Sprout size={20} color="#10b981" /></div>
-                  <div className="stat-data">
-                    <span className="stat-label">Crops Planted</span>
-                    <span className="stat-main">{cropsCount} {cropsCount === 1 ? 'Crop' : 'Crops'}</span>
-                  </div>
-                </div>
-                <div className="stat-pill-card">
-                  <div className="stat-icon-circle orange-soft"><AlertTriangle size={20} color="#f59e0b" /></div>
-                  <div className="stat-data">
-                    <span className="stat-label">Active Alerts</span>
-                    <span className="stat-main">{alerts.length === 0 ? 'No Issues' : `${alerts.length} Active`}</span>
-                  </div>
-                </div>
-                <div className="stat-pill-card">
-                  <div className="stat-icon-circle yellow-soft"><Zap size={20} color="#eab308" /></div>
-                  <div className="stat-data">
-                    <span className="stat-label">Soil Health</span>
-                    <span className="stat-main">
-                      {latestHealthScore !== null ? `${Math.round(latestHealthScore)}/100` : 'No Data'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="dashboard-grid-matching animate-3">
-                <div className="dashboard-col">
-                  {/* Weather Card */}
-                  <div className="dashboard-card matching-card glass-morph">
-                    <div className="card-header-simple"><h3><CloudSun size={20} color="var(--accent-blue)" /> Weather Today</h3></div>
-                    {weatherLoading ? (
-                      <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '1.5rem 0.5rem', color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 600}}>
-                        <Loader2 size={16} style={{animation: 'spin 1s linear infinite'}} /> Fetching weather...
-                      </div>
-                    ) : !weatherData ? (
-                      <div style={{padding: '1.25rem 0.5rem', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: 600}}>
-                        Weather unavailable. Add a location to your farm to enable this.
-                      </div>
-                    ) : (
-                      <>
-                        <div className="weather-summary" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem'}}>
-                          <div style={{textAlign: 'center'}}>
-                            <div style={{fontSize: '2.8rem', fontWeight: 800, color: 'var(--bg-sidebar)', letterSpacing: '-2px'}}>{weatherData.temp}°C</div>
-                            <div className="badge-mini-text" style={{background: 'var(--green-soft)', color: 'var(--accent-emerald)', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 800}}>{(weatherData.condition || 'Clear').toUpperCase()}</div>
-                          </div>
-                          <div style={{display: 'flex', flexDirection: 'column', gap: '0.75rem'}}>
-                            <div className="weather-pill"><Droplets size={16} color="var(--accent-blue)" /> <div className="pill-text"><span className="pill-label">Humidity</span><span className="pill-val">{weatherData.humidity}%</span></div></div>
-                            <div className="weather-pill"><Wind size={16} color="var(--text-muted)" /> <div className="pill-text"><span className="pill-label">Wind Speed</span><span className="pill-val">{weatherData.windSpeed ?? '--'} km/h</span></div></div>
-                          </div>
-                        </div>
-                        {weatherContextLine && (
-                          <div style={{marginTop: '0.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', padding: '0 0.5rem 0.25rem'}}>
-                            {weatherContextLine}
-                          </div>
-                        )}
-                        {weatherTimestamp && (
-                          <div style={{fontSize: '0.68rem', color: 'var(--text-muted)', opacity: 0.7, padding: '0 0.5rem 0.25rem'}}>
-                            {weatherTimestamp}
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-
-                  {/* Alerts Card */}
-                  <div className="dashboard-card matching-card">
-                    <div className="card-header-simple"><h3><Bell size={20} color="var(--accent-rose)" /> Farm Warnings & Notifications</h3></div>
-                    <div className="table-wrapper-ultra-compact" style={{marginTop: '0.5rem'}}>
-                      {alerts.length > 0 ? (
-                        <table className="alerts-table-simple" style={{width: '100%', borderCollapse: 'separate', borderSpacing: '0 0.75rem'}}>
-                          <tbody>
-                            {alerts.map((alert, idx) => (
-                              <tr key={alert.id} className={`animate-${(idx % 5) + 1}`}>
-                                <td style={{background: 'rgba(0,0,0,0.02)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.02)'}}>
-                                  <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
-                                    <div className={`status-tag-mini ${alert.type}`} style={{
-                                      background: alert.type === 'critical' ? '#fee2e2' : '#fef3c7',
-                                      color: alert.type === 'critical' ? '#ef4444' : '#f59e0b',
-                                      padding: '0.25rem 0.6rem', borderRadius: '6px', fontSize: '0.65rem', fontWeight: 800
-                                    }}>
-                                      {alert.type.toUpperCase()}
-                                    </div>
-                                    <span style={{fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-dark)'}}>{alert.message}</span>
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      ) : (
-                        <div className="all-operational-state" style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          padding: '2.25rem 1.5rem',
-                          background: 'var(--green-soft)',
-                          borderRadius: '16px',
-                          border: '1px dashed rgba(16, 185, 129, 0.25)',
-                          textAlign: 'center',
-                          gap: '0.75rem',
-                          transition: 'all 0.3s'
-                        }}>
-                          <div style={{
-                            width: '44px',
-                            height: '44px',
-                            borderRadius: '50%',
-                            background: '#10b981',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'white',
-                            boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
-                          }}>
-                            <CheckCircle2 size={22} />
-                          </div>
-                          <div>
-                            <h4 style={{fontSize: '0.85rem', fontWeight: 800, color: 'var(--bg-sidebar)', marginBottom: '0.2rem'}}>Status: Excellent</h4>
-                            <p style={{fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)'}}>Your farm is doing great. No issues found today.</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section 3 — Right Column: Active Crops + Today's Actions */}
-                <div className="dashboard-col">
-                  <ActiveCropsSummary crops={crops} />
-                  <TodayActions crops={crops} alerts={alerts} />
-                </div>
-              </div>
-            </div>
+                <FarmerDashboardView
+                  greeting={impersonatedFarmId ? "Farm Overview" : greeting}
+                  firstName={impersonatedFarmId ? (impersonatedFarm?.farm_name || 'Loading Farm...') : firstName}
+                  bannerSubtitle={impersonatedFarmId ? `Managed by ${impersonatedFarm?.farmer?.full_name || 'you'}. ${cropsCount} crops actively monitored.` : bannerSubtitle}
+                  farmsCount={impersonatedFarmId ? undefined : farmsCount}
+                  cropsCount={cropsCount}
+                  alerts={alerts}
+                  latestHealthScore={latestHealthScore}
+                  weatherLoading={weatherLoading}
+                  weatherData={weatherData}
+                  weatherContextLine={weatherContextLine}
+                  weatherTimestamp={weatherTimestamp}
+                  crops={crops}
+                  setSoilTestParams={setSoilTestParams}
+                />
               );
             })()} />
-            <Route path="/" element={<Navigate to={user?.role === 'agronomist' ? '/my-farms' : '/dashboard'} replace />} />
-            <Route path="*" element={<Navigate to={user?.role === 'agronomist' ? '/my-farms' : '/dashboard'} replace />} />
+            <Route path="/" element={<Navigate to={user?.role === 'agronomist' && !impersonatedFarmId ? '/my-farms' : '/dashboard'} replace />} />
+            <Route path="/soil-test" element={<SoilTest user={user} impersonatedFarmId={impersonatedFarmId} impersonatedFarm={impersonatedFarm} params={soilTestParams} setParams={setSoilTestParams} setActiveTab={setActiveTab} setHeaderActions={setHeaderActions} setResult={(r) => { setRestChoice(null); setResult(r); }} setToast={setToast} />} />
+            <Route path="/monitoring" element={<Monitoring user={user} impersonatedFarmId={impersonatedFarmId} impersonatedFarm={impersonatedFarm} setActiveTab={setActiveTab} setSoilTestParams={setSoilTestParams} setHeaderActions={setHeaderActions} />} />
+            <Route path="/crop-status" element={<Reports user={user} impersonatedFarmId={impersonatedFarmId} impersonatedFarm={impersonatedFarm} setHeaderActions={setHeaderActions} setReportModal={setReportModal} />} />
+            <Route path="/settings" element={<Settings user={user} onUpdate={(u) => { setUser(u); localStorage.setItem('planto_user', JSON.stringify(u)); }} setHeaderActions={setHeaderActions} />} />
+            <Route path="/my-farms" element={
+              <AgronomistDashboard 
+                user={user} 
+                setHeaderActions={setHeaderActions} 
+                onSelectFarm={(farm) => {
+                  setImpersonatedFarmId(farm.farm_id);
+                  navigate('/dashboard');
+                }} 
+              />
+            } />
           </Routes>
           </Suspense>
         </div>
@@ -722,7 +604,7 @@ function App() {
             </button>
             <button className="icon-btn"><Search size={20} /></button>
             <button className="icon-btn"><MessageSquare size={20} /></button>
-            <button className="icon-btn" style={{ position: 'relative' }}>
+            <button className="icon-btn" style={{ position: 'relative' }} onClick={() => setPanelOpen(true)}>
               <Bell size={20} />
               {unreadAlertsCount > 0 && (
                 <span style={{ 
@@ -751,7 +633,7 @@ function App() {
                 </div>
               </div>
               <div style={{marginTop: '1.5rem'}}>
-                <div className="sidebar-title" style={{color: 'white', textAlign: 'center'}}>Welcome, {user?.full_name?.split(' ')[0] || 'Farmer'}</div>
+                <div className="sidebar-title" style={{color: 'white', textAlign: 'center'}}>Welcome, {impersonatedFarmId ? (impersonatedFarm?.farm_name || 'Loading...') : (user?.full_name?.split(' ')[0] || 'Farmer')}</div>
                 <div style={{fontSize: '0.85rem', opacity: 0.8, textAlign: 'center'}}>Please test your soil to see which crop is best to plant.</div>
               </div>
             </div>
@@ -971,7 +853,35 @@ function App() {
           to { transform: translateY(0); opacity: 1; }
         }
       `}</style>
-      <MobileBottomNav />
+      <MobileBottomNav user={user} impersonatedFarmId={impersonatedFarmId} />
+      <NotificationCenter notifications={notifications} isOpen={panelOpen} onClose={() => setPanelOpen(false)} />
+
+      {/* Report sent modal */}
+      {reportModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
+          <div style={{ background: '#fff', borderRadius: '24px', width: '100%', maxWidth: '420px', padding: '2rem 1.5rem 1.5rem', boxShadow: '0 24px 60px rgba(0,0,0,0.2)', animation: 'slideUpModal 0.22s cubic-bezier(0.34,1.56,0.64,1)', fontFamily: "'Outfit', sans-serif" }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', marginBottom: '1.75rem' }}>
+              <div style={{ width: 52, height: 52, borderRadius: '50%', background: reportModal === 'success' ? '#f0fdf4' : '#fff1f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Mail size={24} color={reportModal === 'success' ? '#16a34a' : '#e11d48'} />
+              </div>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', fontFamily: "'Outfit', sans-serif" }}>
+                {reportModal === 'success' ? 'Report Sent!' : 'Could Not Send Report'}
+              </h3>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b', textAlign: 'center', fontFamily: "'Outfit', sans-serif" }}>
+                {reportModal === 'success'
+                  ? 'Your weekly farm report has been sent to your inbox.'
+                  : 'Something went wrong. Please try again in a moment.'}
+              </p>
+            </div>
+            <button
+              onClick={() => setReportModal(null)}
+              style={{ width: '100%', padding: '0.85rem', borderRadius: '14px', border: 'none', background: reportModal === 'success' ? 'linear-gradient(135deg, #16a34a, #15803d)' : 'linear-gradient(135deg, #e11d48, #be123c)', color: '#fff', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer', fontFamily: "'Outfit', sans-serif" }}
+            >
+              {reportModal === 'success' ? 'Got it' : 'Dismiss'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Pro logout confirmation modal */}
       {showLogoutModal && (

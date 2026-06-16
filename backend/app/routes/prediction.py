@@ -33,9 +33,9 @@ async def predict(
         crop, confidence, advice, status = predict_crop(
             n=data.n, p=data.p, k=data.k,
             temperature=data.temperature,
-            humidity=data.humidity,
             ph=data.ph,
-            rainfall=data.rainfall,
+            ec=data.ec,
+            moisture=data.moisture,
             role=user_role
         )
         
@@ -64,9 +64,18 @@ async def predict(
 async def read_predictions(
     skip: int = 0,
     limit: int = 20,
+    farm_id: Optional[UUID] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    if farm_id:
+        farm = farm_repo.get_farm_by_id(db, farm_id)
+        if not farm:
+            raise HTTPException(status_code=404, detail="Farm not found")
+        if farm.owner_id != current_user.id and current_user.role not in ["admin", "agronomist"]:
+            raise HTTPException(status_code=403, detail="Not authorized to view this farm's data")
+        return prediction_repo.get_farm_predictions(db, farm_id=farm_id, limit=limit)
+
     if current_user.role in ["admin", "agronomist"]:
         return prediction_repo.get_predictions(db, skip=skip, limit=limit)
     else:

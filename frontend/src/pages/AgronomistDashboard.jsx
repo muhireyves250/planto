@@ -3,8 +3,9 @@ import ReactDOM from 'react-dom';
 import {
   Users, Sprout, Activity, MapPin, Phone, Plus, X, ChevronRight,
   Loader2, FlaskConical, TrendingUp, ArrowLeft, BarChart2, Bell,
-  CheckCircle2, CloudSun, CloudRain, ThermometerSun, Droplets, Leaf, Trash2
+  CheckCircle2, CloudSun, ThermometerSun, Droplets, Leaf, Trash2, Layers, Mail, Pencil
 } from 'lucide-react';
+import FarmerDashboardView from '../components/dashboard/FarmerDashboardView';
 import { agronomistApi } from '../api/agronomistApi';
 import { weatherApi } from '../api/farmApi';
 import { sensorApi } from '../api/sensorApi';
@@ -21,7 +22,7 @@ const PREDICT_URL = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/predict`
   : 'http://127.0.0.1:8080/predict';
 
-const SOIL_TYPES = ['Clay', 'Sandy', 'Loamy', 'Silty', 'Peaty', 'Chalky'];
+const SOIL_TYPES = ['None', 'Clay', 'Sandy', 'Loamy', 'Silty', 'Peaty', 'Chalky'];
 const IRRIGATION = ['None', 'Drip', 'Sprinkler', 'Flood', 'Manual'];
 
 function healthColor(score) {
@@ -34,7 +35,7 @@ function healthColor(score) {
 // ── Add Farmer Modal ──────────────────────────────────────────────────────────
 function AddFarmerModal({ onClose, onSaved }) {
   const [form, setForm] = useState({
-    full_name: '', phone: '', location: '', notes: '',
+    full_name: '', email: '', phone: '', location: '', notes: '',
     farm_name: '', farm_size: '', soil_type: '', irrigation_type: '',
   });
   const [loading, setLoading] = useState(false);
@@ -87,6 +88,10 @@ function AddFarmerModal({ onClose, onSaved }) {
             <div>
               <label style={labelStyle}>Phone Number</label>
               <input style={inputStyle} placeholder="+250 7XX XXX XXX" value={form.phone} onChange={e => set('phone', e.target.value)} />
+            </div>
+            <div>
+              <label style={labelStyle}>Email Address</label>
+              <input style={inputStyle} type="email" placeholder="farmer@example.com" value={form.email} onChange={e => set('email', e.target.value)} />
             </div>
             <div>
               <label style={labelStyle}>Village / Sector</label>
@@ -233,13 +238,132 @@ function adaptCropForMonitoring(crop) {
   return { latestHealth, latestSoil, latestPlan, cropAge };
 }
 
+// ── Edit Farm Modal ───────────────────────────────────────────────────────────
+function EditFarmModal({ farm, onClose, onSaved }) {
+  const [form, setForm] = useState({
+    farm_name: farm.farm_name || '',
+    farm_size: farm.farm_size || '',
+    location: farm.location || '',
+    soil_type: farm.soil_type || '',
+    irrigation_type: farm.irrigation_type || '',
+    farmer_full_name: farm.farmer?.full_name || '',
+    farmer_email: farm.farmer?.email || '',
+    farmer_phone: farm.farmer?.phone || '',
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.farm_name.trim()) { setError('Farm name is required.'); return; }
+    setLoading(true); setError('');
+    try {
+      await agronomistApi.updateFarm(farm.farm_id, form);
+      onSaved();
+    } catch {
+      setError('Failed to update farm. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return ReactDOM.createPortal(
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
+      <div style={{ background: '#fff', borderRadius: '24px', width: '100%', maxWidth: '520px', maxHeight: '90dvh', overflowY: 'auto', boxShadow: '0 24px 60px rgba(0,0,0,0.2)', animation: 'slideUpModal 0.22s cubic-bezier(0.34,1.56,0.64,1)' }}>
+        <div style={{ padding: '1.75rem 1.75rem 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', fontFamily: 'var(--font-heading)' }}>Edit Farm Info</h2>
+            <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>Update farm details and farmer contact info.</p>
+          </div>
+          <button onClick={onClose} style={{ width: 36, height: 36, borderRadius: '50%', border: 'none', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+            <X size={18} color="#475569" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} style={{ padding: '1.5rem 1.75rem 1.75rem' }}>
+          <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.75rem' }}>Farm Details</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={labelStyle}>Farm Name *</label>
+              <input style={inputStyle} value={form.farm_name} onChange={e => set('farm_name', e.target.value)} />
+            </div>
+            <div>
+              <label style={labelStyle}>Farm Size</label>
+              <input style={inputStyle} placeholder="e.g. 2 hectares" value={form.farm_size} onChange={e => set('farm_size', e.target.value)} />
+            </div>
+            <div>
+              <label style={labelStyle}>Location</label>
+              <input style={inputStyle} placeholder="e.g. Kayonza, Eastern" value={form.location} onChange={e => set('location', e.target.value)} />
+            </div>
+            <div>
+              <label style={labelStyle}>Irrigation Type</label>
+              <select style={inputStyle} value={form.irrigation_type} onChange={e => set('irrigation_type', e.target.value)}>
+                <option value="">Select...</option>
+                {IRRIGATION.map(i => <option key={i} value={i}>{i}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={labelStyle}>Soil Type</label>
+              <select style={inputStyle} value={form.soil_type} onChange={e => set('soil_type', e.target.value)}>
+                <option value="">Select...</option>
+                {SOIL_TYPES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {farm.farmer && (
+            <>
+              <div style={{ height: 1, background: '#f1f5f9', margin: '1.1rem 0' }} />
+              <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.75rem' }}>Farmer Contact</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label style={labelStyle}>Full Name</label>
+                  <input style={inputStyle} value={form.farmer_full_name} onChange={e => set('farmer_full_name', e.target.value)} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Phone</label>
+                  <input style={inputStyle} placeholder="+250 7XX XXX XXX" value={form.farmer_phone} onChange={e => set('farmer_phone', e.target.value)} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Email</label>
+                  <input style={inputStyle} type="email" placeholder="farmer@example.com" value={form.farmer_email} onChange={e => set('farmer_email', e.target.value)} />
+                </div>
+              </div>
+            </>
+          )}
+
+          {error && (
+            <div style={{ marginTop: '1rem', padding: '0.75rem 1rem', background: '#fff1f2', border: '1px solid #fecaca', borderRadius: '10px', fontSize: '0.82rem', color: '#e11d48' }}>
+              {error}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}>
+            <button type="button" onClick={onClose} style={{ flex: 1, padding: '0.85rem', borderRadius: '14px', border: '2px solid #e2e8f0', background: '#fff', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', color: '#64748b' }}>
+              Cancel
+            </button>
+            <button type="submit" disabled={loading} style={{ flex: 1, padding: '0.85rem', borderRadius: '14px', border: 'none', background: loading ? '#a7f3d0' : 'var(--bg-sidebar)', color: '#fff', fontWeight: 700, fontSize: '0.9rem', cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+              {loading ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : null}
+              {loading ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 // ── Farm Detail Panel ─────────────────────────────────────────────────────────
 function FarmDetailPanel({ farmId, farmName, onBack }) {
   // Farm data
   const [farm, setFarm] = useState(null);
   const [farmLoading, setFarmLoading] = useState(true);
-  const [section, setSection] = useState('soil-test');
+  const [section, setSection] = useState('dashboard');
+  const [dashboardWeather, setDashboardWeather] = useState(null);
+  const [dashboardWeatherLoading, setDashboardWeatherLoading] = useState(false);
   const [showNotify, setShowNotify] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
 
   // Monitoring tab
   const [selectedMonitorCropId, setSelectedMonitorCropId] = useState(null);
@@ -252,7 +376,7 @@ function FarmDetailPanel({ farmId, farmName, onBack }) {
   const [monitoringCropName, setMonitoringCropName] = useState('');
 
   // Soil test form
-  const emptyForm = { n: '', p: '', k: '', ph: '', moisture: '', temperature: '', humidity: '', rainfall: '' };
+  const emptyForm = { n: '', p: '', k: '', ph: '', moisture: '', temperature: '', ec: '' };
   const [formData, setFormData] = useState(emptyForm);
   const [formErrors, setFormErrors] = useState({});
   const [submitLoading, setSubmitLoading] = useState(false);
@@ -265,22 +389,51 @@ function FarmDetailPanel({ farmId, farmName, onBack }) {
   const [envLoading, setEnvLoading] = useState(false);
   const [envError, setEnvError] = useState('');
 
-  const reloadFarm = () => {
+  const fetchWeather = (location, lat, lng) => {
+    setDashboardWeatherLoading(true);
+    const doFetch = (la, lo) =>
+      weatherApi.getWeather(la, lo)
+        .then(w => setDashboardWeather({ temp: Math.round(w.temp), condition: w.condition, humidity: w.humidity, windSpeed: w.wind_speed, rainfall: w.rainfall }))
+        .catch(() => {})
+        .finally(() => setDashboardWeatherLoading(false));
+
+    if (lat && lng) {
+      doFetch(lat, lng);
+    } else if (location) {
+      fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(location)}&format=json&limit=1`, { headers: { 'Accept-Language': 'en' } })
+        .then(r => r.json())
+        .then(res => res?.[0] ? doFetch(parseFloat(res[0].lat), parseFloat(res[0].lon)) : setDashboardWeatherLoading(false))
+        .catch(() => setDashboardWeatherLoading(false));
+    } else {
+      setDashboardWeatherLoading(false);
+    }
+  };
+
+  const reloadFarm = (invalidate = false) => {
+    if (invalidate) agronomistApi.invalidateFarm(farmId);
     setFarmLoading(true);
     agronomistApi.getFarmDetail(farmId).then(data => {
       setFarm(data);
-      // Auto-select first active (or any) crop when farm loads
       if (data?.crops?.length) {
         setSelectedMonitorCropId(prev =>
           prev && data.crops.some(c => c.id === prev) ? prev
           : (data.crops.find(c => c.status === 'active') || data.crops[0])?.id || null
         );
       }
+      // Weather runs in parallel — start immediately on first load only
+      if (!dashboardWeather && !dashboardWeatherLoading) {
+        fetchWeather(data?.location, data?.location_lat, data?.location_lng);
+      }
     }).catch(console.error).finally(() => setFarmLoading(false));
   };
-  useEffect(() => { reloadFarm(); }, [farmId]);
 
-  // Sensor polling
+  useEffect(() => {
+    fetchWeather(null, null, null); // will no-op, but triggers initial state
+    reloadFarm();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [farmId]);
+
+  // Sensor polling — 15s is enough; agronomist shares the same sensor feed
   useEffect(() => {
     const poll = async () => {
       try {
@@ -294,14 +447,14 @@ function FarmDetailPanel({ farmId, farmName, onBack }) {
             n: String(result.data.n), p: String(result.data.p),
             k: String(result.data.k), ph: String(result.data.ph),
             temperature: String(result.data.temperature),
-            humidity: String(result.data.humidity),
-            rainfall: String(result.data.rainfall ?? prev.rainfall),
+            moisture: String(result.data.moisture),
+            ec: String(result.data.ec),
           }));
         }
       } catch { setSensorActive(false); }
     };
     poll();
-    const id = setInterval(poll, 3000);
+    const id = setInterval(poll, 15000);
     return () => clearInterval(id);
   }, []);
 
@@ -323,12 +476,8 @@ function FarmDetailPanel({ farmId, farmName, onBack }) {
     check(formData.k, 'k', 0, 500);
     check(formData.ph, 'ph', 0, 14);
     check(formData.temperature, 'temperature', -10, 60);
-    check(formData.humidity, 'humidity', 0, 100);
-    if (soilTestMode === 'monitoring') {
-      check(formData.moisture, 'moisture', 0, 100);
-    } else {
-      check(formData.rainfall, 'rainfall', 0, 1000);
-    }
+    check(formData.moisture, 'moisture', 0, 100);
+    check(formData.ec, 'ec', 0, 10);
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -339,7 +488,7 @@ function FarmDetailPanel({ farmId, farmName, onBack }) {
     navigator.geolocation.getCurrentPosition(async ({ coords }) => {
       try {
         const data = await weatherApi.getWeather(coords.latitude, coords.longitude);
-        setFormData(p => ({ ...p, temperature: String(data.temp), humidity: String(data.humidity), rainfall: String(data.rainfall || 100) }));
+        setFormData(p => ({ ...p, temperature: String(data.temp), moisture: '50', ec: '1.2' }));
       } catch { setEnvError('Failed to fetch weather. Enter manually.'); }
       finally { setEnvLoading(false); }
     }, () => { setEnvError('Could not get location.'); setEnvLoading(false); });
@@ -360,7 +509,7 @@ function FarmDetailPanel({ farmId, farmName, onBack }) {
           body: JSON.stringify({
             n: parseFloat(formData.n), p: parseFloat(formData.p), k: parseFloat(formData.k),
             ph: parseFloat(formData.ph), moisture: parseFloat(formData.moisture),
-            temperature: parseFloat(formData.temperature), humidity: parseFloat(formData.humidity),
+            temperature: parseFloat(formData.temperature), ec: parseFloat(formData.ec),
           }),
         });
         if (!res.ok) throw new Error(res.status);
@@ -373,7 +522,7 @@ function FarmDetailPanel({ farmId, farmName, onBack }) {
           body: JSON.stringify({
             n: parseFloat(formData.n), p: parseFloat(formData.p), k: parseFloat(formData.k),
             ph: parseFloat(formData.ph), temperature: parseFloat(formData.temperature),
-            humidity: parseFloat(formData.humidity), rainfall: parseFloat(formData.rainfall),
+            moisture: parseFloat(formData.moisture), ec: parseFloat(formData.ec),
           }),
         });
         if (!res.ok) throw new Error(res.status);
@@ -392,8 +541,8 @@ function FarmDetailPanel({ farmId, farmName, onBack }) {
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${storedUser.access_token}` },
                 body: JSON.stringify({
                   n: parseFloat(formData.n), p: parseFloat(formData.p), k: parseFloat(formData.k),
-                  ph: parseFloat(formData.ph), moisture: parseFloat(formData.humidity),
-                  temperature: parseFloat(formData.temperature), humidity: parseFloat(formData.humidity),
+                  ph: parseFloat(formData.ph), moisture: parseFloat(formData.moisture),
+                  temperature: parseFloat(formData.temperature), ec: parseFloat(formData.ec),
                 }),
               });
             }
@@ -438,13 +587,12 @@ function FarmDetailPanel({ farmId, farmName, onBack }) {
     finally { setCropActionLoading(false); }
   };
 
-  const fields = soilTestMode === 'monitoring'
-    ? ['n', 'p', 'k', 'ph', 'moisture', 'temperature', 'humidity']
-    : ['n', 'p', 'k', 'ph', 'temperature', 'humidity', 'rainfall'];
+  const fields = ['n', 'p', 'k', 'ph', 'moisture', 'temperature', 'ec'];
   const filledCount = fields.filter(f => formData[f] !== '').length;
   const progress = Math.round((filledCount / fields.length) * 100);
 
   const TABS = [
+    { id: 'dashboard', label: 'Dashboard', icon: <Layers size={14} /> },
     { id: 'soil-test', label: 'Soil Test', icon: <FlaskConical size={14} /> },
     { id: 'monitoring', label: 'Monitor Crops', icon: <BarChart2 size={14} /> },
   ];
@@ -452,7 +600,7 @@ function FarmDetailPanel({ farmId, farmName, onBack }) {
   return (
     <div>
       {/* ── Stats strip ── */}
-      <div className="stats-strip animate-1">
+      <div className="stats-strip animate-1" style={{ display: section === 'dashboard' ? 'none' : 'flex' }}>
         <div className="stat-pill-card">
           <div className={`stat-icon-circle ${sensorActive ? 'green-soft' : sensorHasData ? 'blue-soft' : 'orange-soft'}`} style={{ position: 'relative' }}>
             <Activity size={20} color={sensorActive ? '#10b981' : sensorHasData ? '#3b82f6' : '#f59e0b'} />
@@ -519,12 +667,35 @@ function FarmDetailPanel({ farmId, farmName, onBack }) {
         <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.6rem 0.9rem', borderRadius: '12px', border: '1.5px solid #e2e8f0', background: '#fff', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>
           <ArrowLeft size={13} /> All Farms
         </button>
+        {farm && (
+          <button onClick={() => setShowEdit(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.6rem 0.9rem', borderRadius: '12px', border: '1.5px solid #bfdbfe', background: '#eff6ff', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 700, color: '#2563eb', whiteSpace: 'nowrap' }}>
+            <Pencil size={13} /> Edit
+          </button>
+        )}
         {farm?.farmer && (
           <button onClick={() => setShowNotify(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.6rem 0.9rem', borderRadius: '12px', border: '1.5px solid #fed7aa', background: '#fff7ed', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 700, color: '#d97706', whiteSpace: 'nowrap' }}>
             <Bell size={13} /> Notify
           </button>
         )}
       </div>
+
+      {/* ── Dashboard tab ── */}
+      {section === 'dashboard' && (
+        <FarmerDashboardView
+          greeting="Farm Overview"
+          firstName={farmName || farm?.farm_name || 'Farm'}
+          bannerSubtitle={`Managed by ${farm?.farmer?.full_name || 'you'}. ${farm?.crops?.length || 0} crops actively monitored.`}
+          farmsCount={undefined}
+          cropsCount={farm?.active_crops || farm?.crops?.length || 0}
+          alerts={farm?.alerts || []}
+          latestHealthScore={farm?.health_score}
+          weatherLoading={dashboardWeatherLoading}
+          weatherData={dashboardWeather}
+          weatherContextLine={null}
+          weatherTimestamp={null}
+          crops={farm?.crops || []}
+        />
+      )}
 
       {/* ── Soil Test tab ── */}
       {section === 'soil-test' && (
@@ -726,20 +897,20 @@ function FarmDetailPanel({ farmId, farmName, onBack }) {
                         {formErrors.temperature && <div style={{ color: '#f87171', fontSize: '0.65rem', marginTop: '0.2rem', fontWeight: 600 }}>{formErrors.temperature}</div>}
                       </div>
                       <div>
-                        <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'rgba(255,255,255,0.7)', marginBottom: '0.2rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Humidity (%)</label>
+                        <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'rgba(255,255,255,0.7)', marginBottom: '0.2rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Soil Moisture (%)</label>
                         <div className="pro-input-wrapper">
                           <div className="pro-input-icon"><Droplets size={16} /></div>
-                          <input type="text" name="humidity" className="pro-input" value={formData.humidity} onChange={handleInput} placeholder="e.g. 82.0" />
+                          <input type="text" name="moisture" className="pro-input" value={formData.moisture} onChange={handleInput} placeholder="e.g. 70" />
                         </div>
-                        {formErrors.humidity && <div style={{ color: '#f87171', fontSize: '0.65rem', marginTop: '0.2rem', fontWeight: 600 }}>{formErrors.humidity}</div>}
+                        {formErrors.moisture && <div style={{ color: '#f87171', fontSize: '0.65rem', marginTop: '0.2rem', fontWeight: 600 }}>{formErrors.moisture}</div>}
                       </div>
                       <div style={{ gridColumn: '1 / -1' }}>
-                        <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'rgba(255,255,255,0.7)', marginBottom: '0.2rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Rainfall Amount (mm)</label>
+                        <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'rgba(255,255,255,0.7)', marginBottom: '0.2rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Electrical Conductivity (ec)</label>
                         <div className="pro-input-wrapper">
-                          <div className="pro-input-icon"><CloudRain size={16} /></div>
-                          <input type="text" name="rainfall" className="pro-input" value={formData.rainfall} onChange={handleInput} placeholder="e.g. 200" />
+                          <div className="pro-input-icon"><Activity size={16} /></div>
+                          <input type="text" name="ec" className="pro-input" value={formData.ec} onChange={handleInput} placeholder="e.g. 1.2" />
                         </div>
-                        {formErrors.rainfall && <div style={{ color: '#f87171', fontSize: '0.65rem', marginTop: '0.2rem', fontWeight: 600 }}>{formErrors.rainfall}</div>}
+                        {formErrors.ec && <div style={{ color: '#f87171', fontSize: '0.65rem', marginTop: '0.2rem', fontWeight: 600 }}>{formErrors.ec}</div>}
                       </div>
                     </div>
                   </div>
@@ -798,12 +969,12 @@ function FarmDetailPanel({ farmId, farmName, onBack }) {
                         {formErrors.temperature && <div style={{ color: '#ef4444', fontSize: '0.65rem', marginTop: '0.2rem', fontWeight: 600 }}>{formErrors.temperature}</div>}
                       </div>
                       <div>
-                        <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '0.2rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Humidity (%)</label>
+                        <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '0.2rem', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Electrical Cond. (ec)</label>
                         <div className="pro-input-wrapper">
-                          <div className="pro-input-icon"><Droplets size={16} /></div>
-                          <input type="text" name="humidity" className="pro-input" value={formData.humidity} onChange={handleInput} placeholder="e.g. 65" />
+                          <div className="pro-input-icon"><Activity size={16} /></div>
+                          <input type="text" name="ec" className="pro-input" value={formData.ec} onChange={handleInput} placeholder="e.g. 1.5" />
                         </div>
-                        {formErrors.humidity && <div style={{ color: '#ef4444', fontSize: '0.65rem', marginTop: '0.2rem', fontWeight: 600 }}>{formErrors.humidity}</div>}
+                        {formErrors.ec && <div style={{ color: '#ef4444', fontSize: '0.65rem', marginTop: '0.2rem', fontWeight: 600 }}>{formErrors.ec}</div>}
                       </div>
                     </>
                   )}
@@ -1012,16 +1183,26 @@ function FarmDetailPanel({ farmId, farmName, onBack }) {
       {showNotify && farm?.farmer && (
         <NotifyFarmerModal farmer={farm.farmer} onClose={() => setShowNotify(false)} />
       )}
+      {showEdit && farm && (
+        <EditFarmModal
+          farm={farm}
+          onClose={() => setShowEdit(false)}
+          onSaved={() => { setShowEdit(false); reloadFarm(true); }}
+        />
+      )}
     </div>
   );
 }
 
 // ── Main Dashboard ────────────────────────────────────────────────────────────
-export default function AgronomistDashboard({ user, setHeaderActions }) {
+export default function AgronomistDashboard({ user, setHeaderActions, onSelectFarm }) {
   const [farms, setFarms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
-  const [selectedFarmId, setSelectedFarmId] = useState(null);
+  const [reportStatus, setReportStatus] = useState({});
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [editTarget, setEditTarget] = useState(null);
 
   const loadFarms = async () => {
     try {
@@ -1032,6 +1213,33 @@ export default function AgronomistDashboard({ user, setHeaderActions }) {
       console.error('Failed to load farms:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const sendReport = async (e, farmId) => {
+    e.stopPropagation();
+    setReportStatus(s => ({ ...s, [farmId]: 'sending' }));
+    try {
+      await agronomistApi.sendFarmerReport(farmId);
+      setReportStatus(s => ({ ...s, [farmId]: 'sent' }));
+      setTimeout(() => setReportStatus(s => { const n = { ...s }; delete n[farmId]; return n; }), 3000);
+    } catch (err) {
+      setReportStatus(s => ({ ...s, [farmId]: 'error' }));
+      setTimeout(() => setReportStatus(s => { const n = { ...s }; delete n[farmId]; return n; }), 4000);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    try {
+      await agronomistApi.deleteFarmer(deleteTarget.farmer_id);
+      setDeleteTarget(null);
+      loadFarms();
+    } catch {
+      // ignore — user can retry
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -1050,38 +1258,7 @@ export default function AgronomistDashboard({ user, setHeaderActions }) {
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   const firstName = user?.full_name?.split(' ')[0] || 'Agronomist';
 
-  // If a farm is selected, show detail panel
-  if (selectedFarmId) {
-    const selectedFarm = farms.find(f => f.farm_id === selectedFarmId);
-    const hc = healthColor(selectedFarm?.health_score);
-    return (
-      <div className="dashboard-view animate-2" style={{ paddingTop: 0 }}>
-        <div className="pro-welcome-banner farmer-banner">
-          <div className="banner-content">
-            <h2>{selectedFarm?.farm_name || 'Farm Detail'}</h2>
-            <p>
-              {[
-                selectedFarm?.farmer_name,
-                selectedFarm?.location,
-                selectedFarm?.farm_size,
-                selectedFarm?.active_crops != null
-                  ? `${selectedFarm.active_crops} active crop${selectedFarm.active_crops !== 1 ? 's' : ''}`
-                  : null,
-              ].filter(Boolean).join(' · ')}
-            </p>
-            {selectedFarm?.health_score && (
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.5rem', background: 'rgba(255,255,255,0.15)', borderRadius: '8px', padding: '0.3rem 0.75rem', fontSize: '0.8rem', fontWeight: 700 }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: hc.text, display: 'inline-block' }} />
-                {Math.round(selectedFarm.health_score)}% · {hc.label}
-              </div>
-            )}
-          </div>
-          <div className="banner-icon"><Sprout size={120} color="rgba(255,255,255,0.1)" /></div>
-        </div>
-        <FarmDetailPanel farmId={selectedFarmId} farmName={selectedFarm?.farm_name} onBack={() => setSelectedFarmId(null)} />
-      </div>
-    );
-  }
+  // Wait, no local FarmDetailPanel rendering needed. Impersonation handled via App.jsx laying out the FarmerDashboardView
 
   return (
     <div className="dashboard-view animate-2" style={{ paddingTop: 0 }}>
@@ -1179,7 +1356,7 @@ export default function AgronomistDashboard({ user, setHeaderActions }) {
               return (
                 <div
                   key={farm.farm_id}
-                  onClick={() => setSelectedFarmId(farm.farm_id)}
+                  onClick={() => onSelectFarm && onSelectFarm(farm)}
                   className="dashboard-card matching-card"
                   style={{ cursor: 'pointer', transition: 'transform 0.15s, box-shadow 0.15s', padding: '1.25rem' }}
                   onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 32px rgba(0,0,0,0.1)'; }}
@@ -1196,11 +1373,25 @@ export default function AgronomistDashboard({ user, setHeaderActions }) {
                         <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '0.15rem' }}>{farm.farm_size || 'Size not set'}</div>
                       </div>
                     </div>
-                    <ChevronRight size={16} color="#cbd5e1" />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <button
+                        onClick={e => { e.stopPropagation(); setEditTarget({ farm_id: farm.farm_id, farm_name: farm.farm_name, farm_size: farm.farm_size, location: farm.location, soil_type: farm.soil_type, irrigation_type: farm.irrigation_type, farmer: farm.farmer_id ? { full_name: farm.farmer_name, email: farm.farmer_email, phone: farm.farmer_phone } : null }); }}
+                        style={{ width: 28, height: 28, borderRadius: '8px', border: 'none', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
+                      >
+                        <Pencil size={13} color="#2563eb" />
+                      </button>
+                      <button
+                        onClick={e => { e.stopPropagation(); farm.farmer_id && setDeleteTarget({ farm_id: farm.farm_id, farmer_id: farm.farmer_id, farm_name: farm.farm_name }); }}
+                        style={{ width: 28, height: 28, borderRadius: '8px', border: 'none', background: '#fff1f2', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
+                      >
+                        <Trash2 size={13} color="#e11d48" />
+                      </button>
+                      <ChevronRight size={16} color="#cbd5e1" />
+                    </div>
                   </div>
 
                   {/* Farmer info */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: farm.farmer_email ? '0.35rem' : '0.75rem' }}>
                     <Users size={13} color="#94a3b8" />
                     <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>{farm.farmer_name || 'Unknown farmer'}</span>
                     {farm.farmer_phone && (
@@ -1211,6 +1402,12 @@ export default function AgronomistDashboard({ user, setHeaderActions }) {
                       </>
                     )}
                   </div>
+                  {farm.farmer_email && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.75rem' }}>
+                      <Mail size={12} color="#94a3b8" />
+                      <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>{farm.farmer_email}</span>
+                    </div>
+                  )}
 
                   {farm.location && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.75rem' }}>
@@ -1231,6 +1428,42 @@ export default function AgronomistDashboard({ user, setHeaderActions }) {
                       {farm.health_score ? `${Math.round(farm.health_score)}% · ${hc.label}` : hc.label}
                     </div>
                   </div>
+
+                  {/* Send report button */}
+                  {(() => {
+                    const st = reportStatus[farm.farm_id];
+                    const hasEmail = !!farm.farmer_email;
+                    const isSending = st === 'sending';
+                    const isSent = st === 'sent';
+                    const isError = st === 'error';
+                    return (
+                      <button
+                        onClick={e => hasEmail && !isSending && sendReport(e, farm.farm_id)}
+                        disabled={!hasEmail || isSending}
+                        style={{
+                          marginTop: '0.65rem',
+                          width: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.4rem',
+                          padding: '0.4rem 0',
+                          borderRadius: '10px',
+                          border: 'none',
+                          fontSize: '0.73rem',
+                          fontWeight: 700,
+                          cursor: hasEmail && !isSending ? 'pointer' : 'not-allowed',
+                          background: isSent ? '#dcfce7' : isError ? '#fee2e2' : hasEmail ? 'var(--green-soft)' : '#f1f5f9',
+                          color: isSent ? '#16a34a' : isError ? '#e11d48' : hasEmail ? '#10b981' : '#94a3b8',
+                          transition: 'opacity 0.15s',
+                          opacity: !hasEmail ? 0.5 : 1,
+                        }}
+                      >
+                        {isSending ? <Loader2 size={13} style={{ animation: 'spin 0.8s linear infinite' }} /> : <Mail size={13} />}
+                        {isSending ? 'Sending…' : isSent ? 'Report Sent!' : isError ? 'Send Failed' : hasEmail ? 'Send Report' : 'No email on file'}
+                      </button>
+                    );
+                  })()}
                 </div>
               );
             })}
@@ -1256,6 +1489,42 @@ export default function AgronomistDashboard({ user, setHeaderActions }) {
           onClose={() => setShowAdd(false)}
           onSaved={() => { setShowAdd(false); loadFarms(); }}
         />
+      )}
+
+      {editTarget && (
+        <EditFarmModal
+          farm={editTarget}
+          onClose={() => setEditTarget(null)}
+          onSaved={() => { setEditTarget(null); loadFarms(); }}
+        />
+      )}
+
+      {deleteTarget && ReactDOM.createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
+          <div style={{ background: '#fff', borderRadius: '24px', width: '100%', maxWidth: '420px', padding: '2rem 1.5rem 1.5rem', boxShadow: '0 24px 60px rgba(0,0,0,0.2)', animation: 'slideUpModal 0.22s cubic-bezier(0.34,1.56,0.64,1)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', marginBottom: '1.75rem' }}>
+              <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#fff1f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Trash2 size={24} color="#e11d48" />
+              </div>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', fontFamily: 'var(--font-heading)' }}>
+                Delete {deleteTarget.farm_name}?
+              </h3>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b', textAlign: 'center', lineHeight: 1.6 }}>
+                This will permanently remove the farm and all associated data including crops and soil history. This cannot be undone.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button onClick={() => setDeleteTarget(null)} style={{ flex: 1, padding: '0.85rem', borderRadius: '14px', border: '2px solid #e2e8f0', background: '#fff', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer', color: '#64748b' }}>
+                Cancel
+              </button>
+              <button onClick={handleDeleteConfirm} disabled={deleteLoading} style={{ flex: 1, padding: '0.85rem', borderRadius: '14px', border: 'none', background: 'linear-gradient(135deg,#e11d48,#be123c)', color: '#fff', fontWeight: 700, fontSize: '0.95rem', cursor: deleteLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+                {deleteLoading ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : null}
+                {deleteLoading ? 'Deleting…' : 'Yes, Delete'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );

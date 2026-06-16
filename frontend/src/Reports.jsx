@@ -1,25 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  FileText, 
-  Download, 
-  ShieldCheck, 
-  AlertCircle, 
-  TrendingDown, 
-  TrendingUp, 
-  Droplets, 
-  Zap,
-  Clock,
-  Printer,
-  Calendar,
+import { useState, useEffect, useCallback } from 'react';
+import {
+  FileText,
+  TrendingDown,
+  TrendingUp,
   Layers,
-  ChevronRight,
   Search,
-  Filter,
-  MoreVertical,
-  Activity,
   History,
   FileSpreadsheet,
-  BadgeCheck,
   Leaf,
   Mail
 } from 'lucide-react';
@@ -32,12 +19,53 @@ import { monitoringApi } from './api/monitoringApi';
 
 const ANALYTICS_URL = `${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080'}/predictions`;
 
-const Reports = ({ user, impersonatedFarmId, impersonatedFarm, setHeaderActions }) => {
+const Reports = ({ user, impersonatedFarmId, impersonatedFarm, setHeaderActions, setReportModal }) => {
   const [data, setData] = useState([]);
   const [sendingReport, setSendingReport] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [plantedCrops, setPlantedCrops] = useState([]);
+
+  const exportCSV = useCallback(() => {
+    const headers = ['ID', 'Timestamp', 'Crop', 'Confidence', 'N', 'P', 'K', 'Temp', 'Humidity', 'pH', 'Rainfall'];
+    const rows = data.map(item => [
+      item.id, item.created_at, item.predicted_crop, item.confidence,
+      item.n, item.p, item.k, item.temperature, item.humidity, item.ph, item.rainfall
+    ]);
+    let csvContent = "data:text/csv;charset=utf-8,"
+      + headers.join(",") + "\n"
+      + rows.map(e => e.join(",")).join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `planto_pro_report_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, [data]);
+
+  const handleSendReport = useCallback(async () => {
+    setSendingReport(true);
+    try {
+      const storedUser = JSON.parse(localStorage.getItem('planto_user') || '{}');
+      const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080';
+      const res = await fetch(`${BASE_URL}/reports/send-email`, {
+        method: 'POST',
+        headers: storedUser?.access_token
+          ? { Authorization: `Bearer ${storedUser.access_token}` }
+          : {},
+      });
+      if (res.ok) {
+        setReportModal('success');
+      } else {
+        setReportModal('error');
+      }
+    } catch {
+      setReportModal('error');
+    } finally {
+      setSendingReport(false);
+    }
+  }, [setReportModal]);
 
   useEffect(() => {
     const cacheKey = impersonatedFarmId ? `predictions_farm_${impersonatedFarmId}` : 'predictions';
@@ -71,7 +99,7 @@ const Reports = ({ user, impersonatedFarmId, impersonatedFarm, setHeaderActions 
             fetches.push(monitoringApi.getMyCrops(storedUser.id));
           }
           const results = await Promise.all(fetches);
-          fetchedData = await results[0].json();
+          if (results[0].ok) fetchedData = await results[0].json();
           cropsData = results[1] || [];
         }
 
@@ -119,14 +147,12 @@ const Reports = ({ user, impersonatedFarmId, impersonatedFarm, setHeaderActions 
         </>
       );
     }
-  }, [searchTerm, data, loading, setHeaderActions, user, sendingReport, handleSendReport]);
+  }, [searchTerm, loading, setHeaderActions, user?.role, sendingReport, exportCSV, handleSendReport]);
 
   const filteredData = data.filter(item => 
     item.predicted_crop.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const latest = data[0] || null;
-  
   // Stats calculations
   const avgConfidence = data.length > 0
     ? (data.reduce((acc, c) => acc + (c.confidence || 0), 0) / data.length * 100).toFixed(1)
@@ -208,49 +234,6 @@ const Reports = ({ user, impersonatedFarmId, impersonatedFarm, setHeaderActions 
     return insights.slice(0, 3);
   })();
 
-  const exportCSV = () => {
-    const headers = ['ID', 'Timestamp', 'Crop', 'Confidence', 'N', 'P', 'K', 'Temp', 'Humidity', 'pH', 'Rainfall'];
-    const rows = data.map(item => [
-      item.id, item.created_at, item.predicted_crop, item.confidence,
-      item.n, item.p, item.k, item.temperature, item.humidity, item.ph, item.rainfall
-    ]);
-    
-    let csvContent = "data:text/csv;charset=utf-8," 
-      + headers.join(",") + "\n"
-      + rows.map(e => e.join(",")).join("\n");
-      
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `planto_pro_report_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const handleSendReport = async () => {
-    setSendingReport(true);
-    try {
-      const storedUser = JSON.parse(localStorage.getItem('planto_user') || '{}');
-      const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080';
-      const res = await fetch(`${BASE_URL}/reports/send-email`, {
-        method: 'POST',
-        headers: storedUser?.access_token
-          ? { Authorization: `Bearer ${storedUser.access_token}` }
-          : {},
-      });
-      if (res.ok) {
-        alert('Report sent to your inbox!');
-      } else {
-        alert('Could not send report — try again.');
-      }
-    } catch {
-      alert('Could not send report — try again.');
-    } finally {
-      setSendingReport(false);
-    }
-  };
-
   const formatDate = (ts) => {
     const d = new Date(ts);
     if (isNaN(d.getTime())) return 'Unknown date';
@@ -302,14 +285,22 @@ const Reports = ({ user, impersonatedFarmId, impersonatedFarm, setHeaderActions 
                   <span style={{ fontSize: '0.62rem', fontWeight: 700, color: '#64748b', background: '#f1f5f9', borderRadius: '99px', padding: '0.2rem 0.6rem' }}>Global Avg</span>
                 </div>
                 <div style={{ height: 220 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
-                      <PolarGrid stroke="rgba(0,0,0,0.06)" />
-                      <PolarAngleAxis dataKey="subject" tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 600 }} />
-                      <Radar name="Soil Index" dataKey="A" stroke="#2d5240" fill="#2d5240" fillOpacity={0.18} strokeWidth={2} />
-                      <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 8px 24px rgba(0,0,0,0.1)', fontSize: '0.75rem' }} />
-                    </RadarChart>
-                  </ResponsiveContainer>
+                  {data.length === 0 ? (
+                    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', background: '#f8fafc', borderRadius: '12px', border: '1px dashed #e2e8f0' }}>
+                      <Layers size={24} color="#cbd5e1" />
+                      <p style={{ margin: 0, fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>No soil data yet</p>
+                      <p style={{ margin: 0, fontSize: '0.68rem', color: '#cbd5e1' }}>Run a soil test to see nutrient averages</p>
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
+                        <PolarGrid stroke="rgba(0,0,0,0.06)" />
+                        <PolarAngleAxis dataKey="subject" tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 600 }} />
+                        <Radar name="Soil Index" dataKey="A" stroke="#2d5240" fill="#2d5240" fillOpacity={0.18} strokeWidth={2} />
+                        <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 8px 24px rgba(0,0,0,0.1)', fontSize: '0.75rem' }} />
+                      </RadarChart>
+                    </ResponsiveContainer>
+                  )}
                 </div>
               </div>
 
@@ -484,23 +475,29 @@ const Reports = ({ user, impersonatedFarmId, impersonatedFarm, setHeaderActions 
               </div>
             </div>
             <div className="chart-container" style={{height: '240px'}}>
-              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
-                  <PolarGrid stroke="rgba(0,0,0,0.05)" />
-                  <PolarAngleAxis dataKey="subject" tick={{fontSize: 10, fill: 'var(--text-muted)', fontWeight: 600}} />
-                  <Radar 
-                    name="Soil Index" 
-                    dataKey="A" 
-                    stroke="var(--accent-emerald)" 
-                    fill="var(--accent-emerald)" 
-                    fillOpacity={0.15} 
-                    strokeWidth={2}
-                  />
-                  <Tooltip 
-                    contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)'}}
-                  />
-                </RadarChart>
-              </ResponsiveContainer>
+              {data.length === 0 ? (
+                <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', background: '#f8fafc', borderRadius: '12px', border: '1px dashed #e2e8f0' }}>
+                  <Layers size={28} color="#cbd5e1" />
+                  <p style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8', fontWeight: 600 }}>No soil data yet</p>
+                  <p style={{ margin: 0, fontSize: '0.72rem', color: '#cbd5e1' }}>Run a soil test to see nutrient averages</p>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                  <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
+                    <PolarGrid stroke="rgba(0,0,0,0.05)" />
+                    <PolarAngleAxis dataKey="subject" tick={{fontSize: 10, fill: 'var(--text-muted)', fontWeight: 600}} />
+                    <Radar
+                      name="Soil Index"
+                      dataKey="A"
+                      stroke="var(--accent-emerald)"
+                      fill="var(--accent-emerald)"
+                      fillOpacity={0.15}
+                      strokeWidth={2}
+                    />
+                    <Tooltip contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)'}} />
+                  </RadarChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </div>
 
