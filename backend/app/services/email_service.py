@@ -75,7 +75,7 @@ async def send_report_email(to_email: str, full_name: str, report_data: dict) ->
 
     try:
         template = _jinja_env.get_template("weekly_report.html")
-        html = template.render(full_name=full_name, app_url=APP_URL, **report_data)
+        html = template.render(**report_data, full_name=full_name, app_url=APP_URL)
 
         msg = MIMEMultipart("alternative")
         msg["Subject"] = f"Your Weekly Farm Report — {report_data.get('report_date', '')}"
