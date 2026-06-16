@@ -92,8 +92,11 @@ function App() {
   const [impersonatedFarm, setImpersonatedFarm] = useState(null);
   const [weatherData, setWeatherData] = useState(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
-  const [sidebarView, setSidebarView] = useState('default'); // 'default' | 'notifications' | 'search'
+  const [sidebarView, setSidebarView] = useState('default'); // 'default' | 'notifications' | 'search' | 'location'
   const [searchQuery, setSearchQuery] = useState('');
+  const [locationLabel, setLocationLabel] = useState(null);
+  const [locationInput, setLocationInput] = useState('');
+  const [locationStatus, setLocationStatus] = useState(null); // null | 'loading' | 'success' | 'error'
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [reportModal, setReportModal] = useState(null); // null | 'success' | 'error'
@@ -105,6 +108,53 @@ function App() {
       sessionStorage.removeItem('planto_impersonated_farm_id');
     }
   }, [impersonatedFarmId]);
+
+  const applyWeatherCoords = async (lat, lng, label) => {
+    setWeatherLoading(true);
+    try {
+      const data = await weatherApi.getWeather(lat, lng);
+      const w = { temp: Math.round(data.temp), condition: data.condition, humidity: data.humidity, windSpeed: data.wind_speed ?? null, rainfall: data.rainfall, _ts: Date.now() };
+      setWeatherData(w);
+      setWeatherFetchedAt(new Date());
+      setCached('weather', w);
+      if (label) setLocationLabel(label);
+    } catch {
+      // leave previous data
+    } finally {
+      setWeatherLoading(false);
+    }
+  };
+
+  const handleManualLocation = async (text) => {
+    if (!text.trim()) return;
+    setLocationStatus('loading');
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text)}&format=json&limit=1`, { headers: { 'Accept-Language': 'en' } });
+      const results = await res.json();
+      if (!results?.[0]) { setLocationStatus('error'); return; }
+      const { lat, lon, display_name } = results[0];
+      const label = display_name.split(',').slice(0, 2).join(',').trim();
+      await applyWeatherCoords(parseFloat(lat), parseFloat(lon), label);
+      setLocationStatus('success');
+      setLocationActive(true);
+    } catch {
+      setLocationStatus('error');
+    }
+  };
+
+  const handleGpsLocation = () => {
+    if (!navigator.geolocation) { setLocationStatus('error'); return; }
+    setLocationStatus('loading');
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        await applyWeatherCoords(pos.coords.latitude, pos.coords.longitude, 'GPS location');
+        setLocationStatus('success');
+        setLocationActive(true);
+      },
+      () => setLocationStatus('error'),
+      { timeout: 8000 }
+    );
+  };
 
   const confirmLogout = () => setShowLogoutModal(true);
 
@@ -601,8 +651,8 @@ function App() {
         <div className="sidebar-content">
           
           <div className="sidebar-top">
-            <button className="icon-btn" onClick={() => setLocationActive(!locationActive)} title={locationActive ? "Location On" : "Location Off"}>
-              <MapPin size={20} style={{ color: locationActive ? '#10b981' : 'inherit', opacity: locationActive ? 1 : 0.5 }} />
+            <button className="icon-btn" onClick={() => { setSidebarView(v => v === 'location' ? 'default' : 'location'); setLocationStatus(null); setLocationInput(''); }} title="Configure Location">
+              <MapPin size={20} style={{ color: sidebarView === 'location' ? '#10b981' : locationActive ? '#10b981' : 'inherit', opacity: locationActive ? 1 : 0.5 }} />
             </button>
             <button className="icon-btn" onClick={() => { setSidebarView(v => v === 'search' ? 'default' : 'search'); setSearchQuery(''); }} title="Search">
               <Search size={20} style={{ color: sidebarView === 'search' ? '#10b981' : 'inherit' }} />
@@ -624,7 +674,108 @@ function App() {
             <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop" alt="Profile" className="profile-avatar" />
           </div>
 
-          {sidebarView === 'search' ? (() => {
+          {sidebarView === 'location' ? (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+              {/* Header */}
+              <div style={{ padding: '1.5rem 1.4rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginBottom: '0.3rem' }}>
+                  <MapPin size={15} style={{ color: '#10b981' }} />
+                  <span style={{ color: '#fff', fontWeight: 700, fontSize: '1rem', letterSpacing: '-0.01em' }}>Location</span>
+                </div>
+                <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.35)', letterSpacing: '0.02em' }}>
+                  Used for live weather on your dashboard
+                </div>
+              </div>
+
+              <div style={{ padding: '1.25rem 1.4rem', display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+                {/* Current location chip */}
+                <div style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.18)', borderRadius: '10px', padding: '0.85rem 1rem' }}>
+                  <div style={{ fontSize: '0.6rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#10b981', marginBottom: '0.35rem' }}>
+                    Active location
+                  </div>
+                  <div style={{ fontSize: '0.82rem', color: '#fff', fontWeight: 600 }}>
+                    {locationLabel || (weatherData ? 'Auto-detected' : 'Not set')}
+                  </div>
+                  {weatherData && (
+                    <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.4)', marginTop: '0.2rem' }}>
+                      {weatherData.temp}°C · {weatherData.condition}
+                    </div>
+                  )}
+                </div>
+
+                {/* GPS button */}
+                <button
+                  onClick={handleGpsLocation}
+                  disabled={locationStatus === 'loading'}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '0.6rem',
+                    background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '10px', padding: '0.75rem 1rem', cursor: 'pointer',
+                    color: '#fff', fontSize: '0.8rem', fontWeight: 600, width: '100%',
+                    transition: 'all 0.15s',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+                >
+                  <span style={{ fontSize: '1rem' }}>📍</span>
+                  <span>Use my GPS location</span>
+                </button>
+
+                {/* Divider */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
+                  <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.25)', letterSpacing: '0.05em' }}>OR</span>
+                  <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
+                </div>
+
+                {/* Manual input */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                  <label style={{ fontSize: '0.67rem', fontWeight: 700, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                    Enter city or address
+                  </label>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: '0.5rem',
+                    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
+                    borderRadius: '10px', padding: '0.55rem 0.85rem',
+                  }}>
+                    <input
+                      type="text"
+                      placeholder="e.g. Kigali, Rwanda"
+                      value={locationInput}
+                      onChange={e => { setLocationInput(e.target.value); setLocationStatus(null); }}
+                      onKeyDown={e => e.key === 'Enter' && handleManualLocation(locationInput)}
+                      style={{ background: 'none', border: 'none', outline: 'none', color: '#fff', fontSize: '0.8rem', width: '100%' }}
+                    />
+                  </div>
+                  <button
+                    onClick={() => handleManualLocation(locationInput)}
+                    disabled={!locationInput.trim() || locationStatus === 'loading'}
+                    style={{
+                      background: locationInput.trim() ? 'linear-gradient(135deg, #10b981, #059669)' : 'rgba(255,255,255,0.06)',
+                      border: 'none', borderRadius: '10px', padding: '0.7rem',
+                      color: locationInput.trim() ? '#fff' : 'rgba(255,255,255,0.3)',
+                      fontSize: '0.8rem', fontWeight: 700, cursor: locationInput.trim() ? 'pointer' : 'default',
+                      transition: 'all 0.2s', letterSpacing: '0.02em',
+                    }}
+                  >
+                    {locationStatus === 'loading' ? 'Locating…' : 'Update Weather Location'}
+                  </button>
+                </div>
+
+                {/* Status feedback */}
+                {locationStatus === 'success' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', color: '#10b981', fontWeight: 600 }}>
+                    <span>✓</span> Location updated successfully
+                  </div>
+                )}
+                {locationStatus === 'error' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', color: '#f87171', fontWeight: 600 }}>
+                    <span>✕</span> Could not find location — try a different name
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : sidebarView === 'search' ? (() => {
             const q = searchQuery.toLowerCase().trim();
             const matchedCrops = q ? crops.filter(c =>
               c.crop_name?.toLowerCase().includes(q) || c.farm_name?.toLowerCase().includes(q)
