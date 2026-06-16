@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Farm Portfolio Digest</title>
+  <style>
+    body { margin: 0; padding: 0; background: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    .wrapper { max-width: 580px; margin: 40px auto; background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
+    .header { background: #1e362a; padding: 28px 32px; text-align: center; }
+    .header h1 { color: #fff; margin: 0 0 4px; font-size: 22px; font-weight: 800; }
+    .header p  { color: rgba(255,255,255,0.6); margin: 0; font-size: 13px; }
+    .greeting { padding: 24px 32px 8px; }
+    .greeting h2 { margin: 0 0 4px; font-size: 20px; font-weight: 800; color: #0f172a; }
+    .greeting p  { margin: 0; font-size: 14px; color: #64748b; }
+    .section { padding: 20px 32px; }
+    .section-title { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: #94a3b8; margin: 0 0 14px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th { text-align: left; font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; padding: 0 0 8px; }
+    td { padding: 10px 0; color: #334155; border-top: 1px solid #f8fafc; vertical-align: middle; }
+    .flag { display: inline-block; background: #fee2e2; color: #dc2626; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; }
+    .score-ok  { color: #16a34a; font-weight: 700; }
+    .score-mid { color: #d97706; font-weight: 700; }
+    .score-low { color: #dc2626; font-weight: 700; }
+    .cta-btn { display: inline-block; background: #16a34a; color: #fff; text-decoration: none; padding: 11px 24px; border-radius: 10px; font-size: 14px; font-weight: 700; }
+    .footer { padding: 16px 32px; background: #f8fafc; text-align: center; font-size: 12px; color: #94a3b8; }
+    .footer a { color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1>🌱 Planto</h1>
+      <p>Portfolio Digest — {{ report_date }}</p>
+    </div>
+    <div class="greeting">
+      <h2>Hi {{ full_name }},</h2>
+      <p>Here's a summary of your {{ farms|length }} managed farm{{ 's' if farms|length != 1 else '' }} this week.</p>
+    </div>
+    <div class="section">
+      <div class="section-title">Managed Farms</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Farm</th>
+            <th>Farmer</th>
+            <th>Crops</th>
+            <th>Avg Health</th>
+            <th>Alerts</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for farm in farms %}
+          <tr>
+            <td style="font-weight:700">{{ farm.farm_name }}</td>
+            <td>{{ farm.farmer_name }}</td>
+            <td>{{ farm.active_crop_count }}</td>
+            <td>
+              {% if farm.avg_health_score is not none %}
+                {% if farm.avg_health_score >= 70 %}
+                  <span class="score-ok">{{ farm.avg_health_score }}%</span>
+                {% elif farm.avg_health_score >= 40 %}
+                  <span class="score-mid">{{ farm.avg_health_score }}%</span>
+                {% else %}
+                  <span class="score-low">{{ farm.avg_health_score }}%</span>
+                {% endif %}
+              {% else %}
+                <span style="color:#94a3b8">—</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if farm.has_critical_alerts %}
+                <span class="flag">⚠️ Critical</span>
+              {% else %}
+                <span style="color:#16a34a;font-size:13px">✓ OK</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="section" style="text-align:center;padding-bottom:24px">
+      <a href="{{ app_url }}/my-farms" class="cta-btn">View All Farms →</a>
+    </div>
+    <div class="footer">
+      You're receiving this because you manage farms on Planto.<br>
+      <a href="{{ app_url }}/settings">Manage notification preferences</a>
+    </div>
+  </div>
+</body>
+</html>
