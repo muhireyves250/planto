@@ -7,8 +7,12 @@ from app.core.database import engine, Base
 from app.models import push_subscription as _push_sub_model  # noqa: F401 — ensures table is registered
 from app.routes import auth, prediction, monitoring, fertilizer, farm, weather, alert, sensor, agronomist, report
 from app.services.mqtt_service import start_mqtt_client
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 
 logger = logging.getLogger(__name__)
+
+_scheduler = AsyncIOScheduler()
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -41,6 +45,21 @@ async def startup_event():
             logger.warning("DB connection attempt %d failed, retrying in 3s...", attempt)
             time.sleep(3)
     start_mqtt_client()
+    from app.services.report_service import send_all_weekly_reports
+    _scheduler.add_job(
+        send_all_weekly_reports,
+        CronTrigger(day_of_week="mon", hour=8, timezone="UTC"),
+        id="weekly_reports",
+        replace_existing=True,
+    )
+    _scheduler.start()
+    logger.info("APScheduler started — weekly reports scheduled for Monday 08:00 UTC")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    _scheduler.shutdown(wait=False)
+    logger.info("APScheduler shut down")
 
 
 def _run_migrations():

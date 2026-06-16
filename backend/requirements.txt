@@ -20,3 +20,4 @@ aiosmtplib
 jinja2
 pytest
 pytest-asyncio
+apscheduler

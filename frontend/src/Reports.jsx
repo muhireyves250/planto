@@ -20,7 +20,8 @@ import {
   History,
   FileSpreadsheet,
   BadgeCheck,
-  Leaf
+  Leaf,
+  Mail
 } from 'lucide-react';
 import { 
   Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer, Tooltip
@@ -31,35 +32,51 @@ import { monitoringApi } from './api/monitoringApi';
 
 const ANALYTICS_URL = `${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080'}/predictions`;
 
-const Reports = ({ user, setHeaderActions }) => {
+const Reports = ({ user, impersonatedFarmId, impersonatedFarm, setHeaderActions }) => {
   const [data, setData] = useState([]);
+  const [sendingReport, setSendingReport] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [plantedCrops, setPlantedCrops] = useState([]);
 
   useEffect(() => {
+    const cacheKey = impersonatedFarmId ? `predictions_farm_${impersonatedFarmId}` : 'predictions';
     const fetchData = async () => {
-      const cached = getCached('predictions');
+      const cached = getCached(cacheKey);
       if (cached) {
         setData(cached);
         setLoading(false);
+      } else {
+        setData([]);
       }
       try {
         const storedUser = JSON.parse(localStorage.getItem('planto_user'));
-        const fetches = [
-          fetch(ANALYTICS_URL, {
+        let cropsData = [];
+        let fetchedData = [];
+
+        if (impersonatedFarmId && impersonatedFarm) {
+          cropsData = impersonatedFarm.crops || [];
+          const predUrl = `${ANALYTICS_URL}?farm_id=${impersonatedFarmId}`;
+          const predRes = await fetch(predUrl, {
             headers: storedUser?.access_token ? { 'Authorization': `Bearer ${storedUser.access_token}` } : {}
-          })
-        ];
-        if (storedUser?.id) {
-          fetches.push(monitoringApi.getMyCrops(storedUser.id));
+          });
+          if (predRes.ok) fetchedData = await predRes.json();
+        } else {
+          const fetches = [
+            fetch(ANALYTICS_URL, {
+              headers: storedUser?.access_token ? { 'Authorization': `Bearer ${storedUser.access_token}` } : {}
+            })
+          ];
+          if (storedUser?.id) {
+            fetches.push(monitoringApi.getMyCrops(storedUser.id));
+          }
+          const results = await Promise.all(fetches);
+          fetchedData = await results[0].json();
+          cropsData = results[1] || [];
         }
-        const results = await Promise.all(fetches);
-        const predResponse = results[0];
-        const cropsData = results[1];
-        const json = await predResponse.json();
-        const sorted = (json || []).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        setCached('predictions', sorted);
+
+        const sorted = (fetchedData || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        setCached(cacheKey, sorted);
         setData(sorted);
         if (cropsData) setPlantedCrops(cropsData);
       } catch (err) {
@@ -69,7 +86,7 @@ const Reports = ({ user, setHeaderActions }) => {
       }
     };
     fetchData();
-  }, []);
+  }, [impersonatedFarmId, impersonatedFarm]);
 
   useEffect(() => {
     if (setHeaderActions && !loading) {
@@ -88,10 +105,21 @@ const Reports = ({ user, setHeaderActions }) => {
             <FileSpreadsheet size={18} />
             <span>Export Dataset</span>
           </button>
+          {user?.role === 'farmer' && (
+            <button
+              onClick={handleSendReport}
+              disabled={sendingReport}
+              className="pro-action-btn primary shadow-btn"
+              style={{ background: sendingReport ? '#e2e8f0' : '#16a34a', color: sendingReport ? '#94a3b8' : '#fff' }}
+            >
+              <Mail size={18} />
+              <span>{sendingReport ? 'Sending…' : 'Send Report'}</span>
+            </button>
+          )}
         </>
       );
     }
-  }, [searchTerm, data, loading, setHeaderActions]);
+  }, [searchTerm, data, loading, setHeaderActions, user, sendingReport, handleSendReport]);
 
   const filteredData = data.filter(item => 
     item.predicted_crop.toLowerCase().includes(searchTerm.toLowerCase())
@@ -109,7 +137,9 @@ const Reports = ({ user, setHeaderActions }) => {
   const storedUser = (() => {
     try { return JSON.parse(localStorage.getItem('planto_user')); } catch { return null; }
   })();
-  const firstName = storedUser?.full_name?.split(' ')[0] || 'Farmer';
+  const firstName = impersonatedFarm
+    ? (impersonatedFarm.farmer?.full_name?.split(' ')[0] || impersonatedFarm.farm_name || 'Farmer')
+    : (storedUser?.full_name?.split(' ')[0] || 'Farmer');
   const recordSummary = data.length === 0
     ? 'No soil tests recorded yet. Run your first test to begin building your archive.'
     : `${data.length} soil test record${data.length === 1 ? '' : 's'} found. Filter by crop or export to CSV.`;
@@ -181,7 +211,7 @@ const Reports = ({ user, setHeaderActions }) => {
   const exportCSV = () => {
     const headers = ['ID', 'Timestamp', 'Crop', 'Confidence', 'N', 'P', 'K', 'Temp', 'Humidity', 'pH', 'Rainfall'];
     const rows = data.map(item => [
-      item.id, item.timestamp, item.predicted_crop, item.confidence, 
+      item.id, item.created_at, item.predicted_crop, item.confidence,
       item.n, item.p, item.k, item.temperature, item.humidity, item.ph, item.rainfall
     ]);
     
@@ -196,6 +226,29 @@ const Reports = ({ user, setHeaderActions }) => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleSendReport = async () => {
+    setSendingReport(true);
+    try {
+      const storedUser = JSON.parse(localStorage.getItem('planto_user') || '{}');
+      const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080';
+      const res = await fetch(`${BASE_URL}/reports/send-email`, {
+        method: 'POST',
+        headers: storedUser?.access_token
+          ? { Authorization: `Bearer ${storedUser.access_token}` }
+          : {},
+      });
+      if (res.ok) {
+        alert('Report sent to your inbox!');
+      } else {
+        alert('Could not send report — try again.');
+      }
+    } catch {
+      alert('Could not send report — try again.');
+    } finally {
+      setSendingReport(false);
+    }
   };
 
   const formatDate = (ts) => {
@@ -305,7 +358,7 @@ const Reports = ({ user, setHeaderActions }) => {
                             <Leaf size={12} color="#059669" />
                             <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0f172a', textTransform: 'capitalize' }}>{item.predicted_crop}</span>
                           </div>
-                          <div style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 600 }}>{formatDate(item.timestamp)}</div>
+                          <div style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 600 }}>{formatDate(item.created_at)}</div>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.3rem' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
@@ -328,6 +381,15 @@ const Reports = ({ user, setHeaderActions }) => {
               <button onClick={exportCSV} style={{ width: '100%', background: '#1e362a', color: '#fff', border: 'none', borderRadius: '16px', padding: '1rem', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
                 <FileText size={16} /> Export as CSV
               </button>
+              {user?.role === 'farmer' && (
+                <button
+                  onClick={handleSendReport}
+                  disabled={sendingReport}
+                  style={{ width: '100%', background: sendingReport ? '#e2e8f0' : '#16a34a', color: sendingReport ? '#94a3b8' : '#fff', border: 'none', borderRadius: '16px', padding: '1rem', fontWeight: 700, fontSize: '0.9rem', cursor: sendingReport ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginTop: '0.5rem' }}
+                >
+                  <Mail size={16} /> {sendingReport ? 'Sending…' : 'Send Report to My Inbox'}
+                </button>
+              )}
             </>
           )}
           </div>
@@ -501,7 +563,7 @@ const Reports = ({ user, setHeaderActions }) => {
                   {filteredData.map((item, idx) => (
                     <tr key={item.id || idx}>
                       <td style={{fontSize: '0.7rem', color: '#64748b'}}>
-                        {new Date(item.timestamp).toLocaleDateString([], {month: 'short', day: 'numeric', year: 'numeric'})}
+                        {new Date(item.created_at).toLocaleDateString([], {month: 'short', day: 'numeric', year: 'numeric'})}
                       </td>
                       <td>
                         <div className="crop-pill-pro" style={{display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'var(--widget-light-green)', color: 'var(--bg-sidebar)', padding: '0.3rem 0.6rem', borderRadius: '50px', fontSize: '0.75rem', fontWeight: 800}}>
