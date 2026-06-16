@@ -92,6 +92,7 @@ function App() {
   const [impersonatedFarm, setImpersonatedFarm] = useState(null);
   const [weatherData, setWeatherData] = useState(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
+  const [sidebarView, setSidebarView] = useState('default'); // 'default' | 'notifications'
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [reportModal, setReportModal] = useState(null); // null | 'success' | 'error'
@@ -604,13 +605,13 @@ function App() {
             </button>
             <button className="icon-btn"><Search size={20} /></button>
             <button className="icon-btn"><MessageSquare size={20} /></button>
-            <button className="icon-btn" style={{ position: 'relative' }} onClick={() => setPanelOpen(true)}>
-              <Bell size={20} />
+            <button className="icon-btn" style={{ position: 'relative' }} onClick={() => setSidebarView(v => v === 'notifications' ? 'default' : 'notifications')}>
+              <Bell size={20} style={{ color: sidebarView === 'notifications' ? '#10b981' : 'inherit' }} />
               {unreadAlertsCount > 0 && (
-                <span style={{ 
-                  position: 'absolute', top: -5, right: -5, background: '#ef4444', 
-                  color: 'white', borderRadius: '50%', width: 15, height: 15, 
-                  fontSize: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center' 
+                <span style={{
+                  position: 'absolute', top: -5, right: -5, background: '#ef4444',
+                  color: 'white', borderRadius: '50%', width: 15, height: 15,
+                  fontSize: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center'
                 }}>
                   {unreadAlertsCount}
                 </span>
@@ -620,7 +621,64 @@ function App() {
             <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop" alt="Profile" className="profile-avatar" />
           </div>
 
-          {!result ? (
+          {sidebarView === 'notifications' ? (
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ padding: '1rem 1.25rem 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ color: 'white', fontWeight: 700, fontSize: '0.95rem' }}>Notifications</span>
+                {unreadAlertsCount > 0 && (
+                  <button
+                    onClick={notifications.markAllRead}
+                    style={{ fontSize: '0.7rem', color: '#10b981', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer' }}
+                  >
+                    Mark all read
+                  </button>
+                )}
+              </div>
+              {alerts.length === 0 ? (
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.4)', gap: '0.75rem', padding: '2rem' }}>
+                  <Bell size={36} />
+                  <span style={{ fontSize: '0.85rem' }}>No notifications yet</span>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+                  {alerts.map((alert) => (
+                    <div key={alert.id} style={{
+                      padding: '0.85rem 1.25rem',
+                      borderBottom: '1px solid rgba(255,255,255,0.06)',
+                      background: !alert.is_read ? 'rgba(16,185,129,0.06)' : 'transparent',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                        <span style={{
+                          fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
+                          padding: '0.15rem 0.5rem', borderRadius: '999px',
+                          background: alert.type === 'critical' ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)',
+                          color: alert.type === 'critical' ? '#f87171' : '#fbbf24',
+                        }}>
+                          {alert.type}
+                        </span>
+                        <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)' }}>
+                          {new Date(alert.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.85)', margin: '0.25rem 0', lineHeight: 1.4 }}>
+                        {alert.message}
+                      </p>
+                      <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.4rem' }}>
+                        {!alert.is_read && (
+                          <button onClick={() => notifications.markRead(alert.id)} style={{ fontSize: '0.68rem', color: '#10b981', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 }}>
+                            Mark as read
+                          </button>
+                        )}
+                        <button onClick={() => notifications.deleteAlert(alert.id)} style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.3)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginLeft: 'auto' }}>
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : !result ? (
             <div className="awaiting-state">
               <div className="land-health-meter">
                 <svg viewBox="0 0 100 100" className="meter-svg">
