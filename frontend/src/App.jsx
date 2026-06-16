@@ -92,7 +92,8 @@ function App() {
   const [impersonatedFarm, setImpersonatedFarm] = useState(null);
   const [weatherData, setWeatherData] = useState(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
-  const [sidebarView, setSidebarView] = useState('default'); // 'default' | 'notifications'
+  const [sidebarView, setSidebarView] = useState('default'); // 'default' | 'notifications' | 'search'
+  const [searchQuery, setSearchQuery] = useState('');
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [reportModal, setReportModal] = useState(null); // null | 'success' | 'error'
@@ -603,7 +604,9 @@ function App() {
             <button className="icon-btn" onClick={() => setLocationActive(!locationActive)} title={locationActive ? "Location On" : "Location Off"}>
               <MapPin size={20} style={{ color: locationActive ? '#10b981' : 'inherit', opacity: locationActive ? 1 : 0.5 }} />
             </button>
-            <button className="icon-btn"><Search size={20} /></button>
+            <button className="icon-btn" onClick={() => { setSidebarView(v => v === 'search' ? 'default' : 'search'); setSearchQuery(''); }} title="Search">
+              <Search size={20} style={{ color: sidebarView === 'search' ? '#10b981' : 'inherit' }} />
+            </button>
             <button className="icon-btn"><MessageSquare size={20} /></button>
             <button className="icon-btn" style={{ position: 'relative' }} onClick={() => setSidebarView(v => v === 'notifications' ? 'default' : 'notifications')}>
               <Bell size={20} style={{ color: sidebarView === 'notifications' ? '#10b981' : 'inherit' }} />
@@ -621,7 +624,137 @@ function App() {
             <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop" alt="Profile" className="profile-avatar" />
           </div>
 
-          {sidebarView === 'notifications' ? (
+          {sidebarView === 'search' ? (() => {
+            const q = searchQuery.toLowerCase().trim();
+            const matchedCrops = q ? crops.filter(c =>
+              c.crop_name?.toLowerCase().includes(q) || c.farm_name?.toLowerCase().includes(q)
+            ) : [];
+            const matchedAlerts = q ? alerts.filter(a =>
+              a.title?.toLowerCase().includes(q) || a.message?.toLowerCase().includes(q) || a.type?.toLowerCase().includes(q)
+            ) : [];
+            const hasResults = matchedCrops.length > 0 || matchedAlerts.length > 0;
+
+            return (
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                {/* Search input */}
+                <div style={{ padding: '1.25rem 1.4rem 0.75rem', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: '0.6rem',
+                    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
+                    borderRadius: '10px', padding: '0.55rem 0.85rem',
+                  }}>
+                    <Search size={14} style={{ color: 'rgba(255,255,255,0.4)', flexShrink: 0 }} />
+                    <input
+                      autoFocus
+                      type="text"
+                      placeholder="Search crops, alerts…"
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      style={{
+                        background: 'none', border: 'none', outline: 'none', color: '#fff',
+                        fontSize: '0.82rem', width: '100%', letterSpacing: '0.01em',
+                      }}
+                    />
+                    {searchQuery && (
+                      <button onClick={() => setSearchQuery('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', padding: 0, lineHeight: 1 }}>✕</button>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ flex: 1, overflowY: 'auto' }}>
+                  {!q ? (
+                    <div style={{ padding: '2.5rem 1.4rem', textAlign: 'center' }}>
+                      <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.75rem', letterSpacing: '0.03em' }}>
+                        Search across crops and alerts
+                      </div>
+                    </div>
+                  ) : !hasResults ? (
+                    <div style={{ padding: '2.5rem 1.4rem', textAlign: 'center' }}>
+                      <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.82rem', fontWeight: 600 }}>No results for "{searchQuery}"</div>
+                      <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '0.7rem', marginTop: '0.3rem' }}>Try crop name or alert type</div>
+                    </div>
+                  ) : (
+                    <div style={{ padding: '0.75rem 0' }}>
+                      {/* Crops */}
+                      {matchedCrops.length > 0 && (
+                        <div>
+                          <div style={{ padding: '0.4rem 1.4rem 0.5rem', fontSize: '0.6rem', fontWeight: 800, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase' }}>
+                            Crops · {matchedCrops.length}
+                          </div>
+                          {matchedCrops.map(crop => {
+                            const score = crop.health_history?.length
+                              ? Math.round((crop.health_history[crop.health_history.length - 1].health_score ?? 0) * (crop.health_history[crop.health_history.length - 1].health_score <= 1 ? 100 : 1))
+                              : null;
+                            const scoreColor = score >= 70 ? '#10b981' : score >= 40 ? '#fbbf24' : '#f87171';
+                            return (
+                              <button key={crop.id} onClick={() => { navigate('/monitoring'); setSidebarView('default'); }} style={{
+                                width: '100%', background: 'none', border: 'none', cursor: 'pointer',
+                                padding: '0.7rem 1.4rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
+                                transition: 'background 0.15s', textAlign: 'left',
+                              }}
+                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                              >
+                                <div style={{
+                                  width: 32, height: 32, borderRadius: '8px', flexShrink: 0,
+                                  background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.2)',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  fontSize: '0.85rem',
+                                }}>🌱</div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#fff', textTransform: 'capitalize', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    {crop.crop_name}
+                                  </div>
+                                  {crop.farm_name && (
+                                    <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', marginTop: '0.1rem' }}>{crop.farm_name}</div>
+                                  )}
+                                </div>
+                                {score !== null && (
+                                  <span style={{ fontSize: '0.7rem', fontWeight: 800, color: scoreColor }}>{score}%</span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Alerts */}
+                      {matchedAlerts.length > 0 && (
+                        <div style={{ marginTop: matchedCrops.length ? '0.5rem' : 0 }}>
+                          <div style={{ padding: '0.4rem 1.4rem 0.5rem', fontSize: '0.6rem', fontWeight: 800, letterSpacing: '0.1em', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase' }}>
+                            Alerts · {matchedAlerts.length}
+                          </div>
+                          {matchedAlerts.map(alert => {
+                            const isCrit = alert.type === 'critical';
+                            return (
+                              <button key={alert.id} onClick={() => { notifications.markRead(alert.id); setSidebarView('notifications'); }} style={{
+                                width: '100%', background: 'none', border: 'none', cursor: 'pointer',
+                                padding: '0.7rem 1.4rem', display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
+                                textAlign: 'left', borderLeft: `3px solid ${isCrit ? '#f87171' : '#fbbf24'}`,
+                                transition: 'background 0.15s',
+                              }}
+                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                              >
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontSize: '0.58rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: isCrit ? '#f87171' : '#fbbf24', marginBottom: '0.2rem' }}>
+                                    {alert.type}
+                                  </div>
+                                  <div style={{ fontSize: '0.74rem', color: 'rgba(255,255,255,0.75)', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                                    {alert.message}
+                                  </div>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })() : sidebarView === 'notifications' ? (
             <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
               {/* Header */}
               <div style={{ padding: '1.5rem 1.4rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
