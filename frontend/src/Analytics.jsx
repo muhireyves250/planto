@@ -27,7 +27,7 @@ const Analytics = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const user = JSON.parse(localStorage.getItem('planto_user'));
+        const user = JSON.parse(sessionStorage.getItem('planto_user'));
         const response = await fetch(ANALYTICS_URL, {
           headers: {
             ...(user?.access_token ? { 'Authorization': `Bearer ${user.access_token}` } : {})

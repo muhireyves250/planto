@@ -1,8 +1,8 @@
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080';
+const BASE_URL = import.meta.env.VITE_API_URL || '';
 
 export const fertilizerApi = {
   getRecommendation: async (plantId) => {
-    const user = JSON.parse(localStorage.getItem('planto_user'));
+    const user = JSON.parse(sessionStorage.getItem('planto_user'));
     const response = await fetch(`${BASE_URL}/fertilizer-recommendation/${plantId}`, {
       headers: {
         'Authorization': `Bearer ${user?.access_token}`

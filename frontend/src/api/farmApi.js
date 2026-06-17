@@ -1,9 +1,9 @@
 import { getCached, setCached, clearCached } from './cache';
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080';
+const BASE_URL = import.meta.env.VITE_API_URL || '';
 
 function _authHeaders() {
-    const user = JSON.parse(localStorage.getItem('planto_user'));
+    const user = JSON.parse(sessionStorage.getItem('planto_user'));
     return user?.access_token ? { Authorization: `Bearer ${user.access_token}` } : {};
 }
 
@@ -15,7 +15,7 @@ export const farmApi = {
         const response = await fetch(`${BASE_URL}/farms/`, { headers });
         if (!response.ok) {
             if (response.status === 401) {
-                localStorage.removeItem('planto_user');
+                sessionStorage.removeItem('planto_user');
                 window.location.reload();
                 return [];
             }
@@ -34,7 +34,7 @@ export const farmApi = {
             body: JSON.stringify(farmData),
         });
         if (!response.ok) {
-            if (response.status === 401) { localStorage.removeItem('planto_user'); window.location.reload(); throw new Error('Session expired'); }
+            if (response.status === 401) { sessionStorage.removeItem('planto_user'); window.location.reload(); throw new Error('Session expired'); }
             throw new Error('Failed to create farm');
         }
         clearCached('farmer_farms');
@@ -47,7 +47,7 @@ export const farmApi = {
             body: JSON.stringify(farmData),
         });
         if (!response.ok) {
-            if (response.status === 401) { localStorage.removeItem('planto_user'); window.location.reload(); throw new Error('Session expired'); }
+            if (response.status === 401) { sessionStorage.removeItem('planto_user'); window.location.reload(); throw new Error('Session expired'); }
             throw new Error('Failed to update farm');
         }
         clearCached('farmer_farms');
@@ -59,7 +59,7 @@ export const farmApi = {
             headers: _authHeaders(),
         });
         if (!response.ok) {
-            if (response.status === 401) { localStorage.removeItem('planto_user'); window.location.reload(); throw new Error('Session expired'); }
+            if (response.status === 401) { sessionStorage.removeItem('planto_user'); window.location.reload(); throw new Error('Session expired'); }
             throw new Error('Failed to delete farm');
         }
         clearCached('farmer_farms');
@@ -81,7 +81,7 @@ export const weatherApi = {
 
 export const alertApi = {
     getAlerts: async () => {
-        const user = JSON.parse(localStorage.getItem('planto_user'));
+        const user = JSON.parse(sessionStorage.getItem('planto_user'));
         const headers = {};
         if (user?.access_token) {
             headers['Authorization'] = `Bearer ${user.access_token}`;
@@ -89,7 +89,7 @@ export const alertApi = {
         const response = await fetch(`${BASE_URL}/alerts/`, { headers });
         if (!response.ok) {
             if (response.status === 401) {
-                localStorage.removeItem('planto_user');
+                sessionStorage.removeItem('planto_user');
                 window.location.reload();
                 return [];
             }
@@ -100,7 +100,7 @@ export const alertApi = {
         return response.json();
     },
     markRead: async (alertId) => {
-        const user = JSON.parse(localStorage.getItem('planto_user'));
+        const user = JSON.parse(sessionStorage.getItem('planto_user'));
         const response = await fetch(`${BASE_URL}/alerts/${alertId}/read`, {
             method: 'PUT',
             headers: {
@@ -117,7 +117,7 @@ export const alertApi = {
 };
 
 function authHeaders() {
-  const user = JSON.parse(localStorage.getItem('planto_user'));
+  const user = JSON.parse(sessionStorage.getItem('planto_user'));
   return user?.access_token ? { Authorization: `Bearer ${user.access_token}` } : {};
 }
 

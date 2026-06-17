@@ -1,16 +1,16 @@
 import { getCached, setCached, clearCached } from './cache';
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080';
+const BASE_URL = import.meta.env.VITE_API_URL || '';
 
 function authHeaders(extra = {}) {
-  const user = JSON.parse(localStorage.getItem('planto_user'));
+  const user = JSON.parse(sessionStorage.getItem('planto_user'));
   const headers = { 'Content-Type': 'application/json', ...extra };
   if (user?.access_token) headers['Authorization'] = `Bearer ${user.access_token}`;
   return headers;
 }
 
 async function handle(res) {
-  if (res.status === 401) { localStorage.removeItem('planto_user'); window.location.reload(); }
+  if (res.status === 401) { sessionStorage.removeItem('planto_user'); window.location.reload(); }
   if (!res.ok) { const err = new Error(await res.text()); err.status = res.status; throw err; }
   if (res.status === 204) return null;
   return res.json();

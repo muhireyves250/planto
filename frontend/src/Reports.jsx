@@ -17,7 +17,7 @@ import {
 import { getCached, setCached } from './api/cache';
 import { monitoringApi } from './api/monitoringApi';
 
-const ANALYTICS_URL = `${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080'}/predictions`;
+const ANALYTICS_URL = `${import.meta.env.VITE_API_URL || ''}/predictions`;
 
 const Reports = ({ user, impersonatedFarmId, impersonatedFarm, setHeaderActions, setReportModal }) => {
   const [data, setData] = useState([]);
@@ -47,8 +47,8 @@ const Reports = ({ user, impersonatedFarmId, impersonatedFarm, setHeaderActions,
   const handleSendReport = useCallback(async () => {
     setSendingReport(true);
     try {
-      const storedUser = JSON.parse(localStorage.getItem('planto_user') || '{}');
-      const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080';
+      const storedUser = JSON.parse(sessionStorage.getItem('planto_user') || '{}');
+      const BASE_URL = import.meta.env.VITE_API_URL || '';
       const res = await fetch(`${BASE_URL}/reports/send-email`, {
         method: 'POST',
         headers: storedUser?.access_token
@@ -78,7 +78,7 @@ const Reports = ({ user, impersonatedFarmId, impersonatedFarm, setHeaderActions,
         setData([]);
       }
       try {
-        const storedUser = JSON.parse(localStorage.getItem('planto_user'));
+        const storedUser = JSON.parse(sessionStorage.getItem('planto_user'));
         let cropsData = [];
         let fetchedData = [];
 
@@ -161,7 +161,7 @@ const Reports = ({ user, impersonatedFarmId, impersonatedFarm, setHeaderActions,
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   const storedUser = (() => {
-    try { return JSON.parse(localStorage.getItem('planto_user')); } catch { return null; }
+    try { return JSON.parse(sessionStorage.getItem('planto_user')); } catch { return null; }
   })();
   const firstName = impersonatedFarm
     ? (impersonatedFarm.farmer?.full_name?.split(' ')[0] || impersonatedFarm.farm_name || 'Farmer')

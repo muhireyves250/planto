@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -8,6 +9,7 @@ from app.models.user import User
 from app.schemas import prediction as pred_schemas
 from app.repositories import prediction_repo, farm_repo
 from app.services.ml.predict import predict_crop
+from app.services.email_service import send_prediction_email
 
 router = APIRouter(tags=["Prediction"])
 
@@ -47,6 +49,19 @@ async def predict(
             confidence=confidence
         )
         prediction_repo.create_prediction(db=db, prediction=prediction_record)
+
+        # Fire-and-forget email — never delay or fail the API response
+        if current_user and current_user.email and current_user.role == "farmer":
+            asyncio.create_task(send_prediction_email(
+                to_email=current_user.email,
+                full_name=current_user.full_name,
+                crop=crop,
+                confidence=confidence,
+                advice=advice,
+                status=status,
+                n=data.n, p=data.p, k=data.k,
+                ph=data.ph, moisture=data.moisture, temperature=data.temperature,
+            ))
 
         return {
             "success": True,

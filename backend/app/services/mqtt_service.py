@@ -1,5 +1,6 @@
 import json
 import threading
+import time
 import paho.mqtt.client as mqtt
 
 MQTT_BROKER = "broker.benax.rw"
@@ -8,8 +9,10 @@ MQTT_TOPIC = "planto/soil"
 MQTT_USER = "devadmin2"
 MQTT_PASS = "Tw26~wh$Q"
 
+SENSOR_TIMEOUT_SECONDS = 30
+
 _latest_reading = None
-_sensor_active = False
+_last_received_at = None
 _lock = threading.Lock()
 
 
@@ -17,7 +20,9 @@ def get_latest_reading():
     with _lock:
         if _latest_reading is None:
             return None
-        return {**_latest_reading, "active": _sensor_active}
+        age = time.time() - _last_received_at if _last_received_at else float('inf')
+        active = age < SENSOR_TIMEOUT_SECONDS
+        return {**_latest_reading, "active": active}
 
 
 def _on_connect(client, userdata, flags, rc):
@@ -29,7 +34,7 @@ def _on_connect(client, userdata, flags, rc):
 
 
 def _on_message(client, userdata, msg):
-    global _latest_reading, _sensor_active
+    global _latest_reading, _last_received_at
     payload = msg.payload.decode("utf-8").strip()
     print(f"[MQTT] Received: {payload}")
 
@@ -52,7 +57,7 @@ def _on_message(client, userdata, msg):
 
         with _lock:
             _latest_reading = reading
-            _sensor_active = True
+            _last_received_at = time.time()
 
         print(f"[MQTT] Soil reading stored: {reading}")
 

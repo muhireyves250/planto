@@ -18,9 +18,7 @@ import SoilHealthBars from '../components/monitoring/SoilHealthBars';
 import SoilRetestCTA from '../components/monitoring/SoilRetestCTA';
 import SmartAlerts from '../components/monitoring/SmartAlerts';
 
-const PREDICT_URL = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL}/predict`
-  : 'http://127.0.0.1:8080/predict';
+const PREDICT_URL = `${import.meta.env.VITE_API_URL || ''}/predict`;
 
 const SOIL_TYPES = ['None', 'Clay', 'Sandy', 'Loamy', 'Silty', 'Peaty', 'Chalky'];
 const IRRIGATION = ['None', 'Drip', 'Sprinkler', 'Flood', 'Manual'];
@@ -498,8 +496,8 @@ function FarmDetailPanel({ farmId, farmName, onBack }) {
     e.preventDefault();
     if (!validate()) return;
     setSubmitLoading(true); setSubmitError(''); setTestResult(null);
-    const storedUser = JSON.parse(localStorage.getItem('planto_user'));
-    const BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080';
+    const storedUser = JSON.parse(sessionStorage.getItem('planto_user'));
+    const BASE = import.meta.env.VITE_API_URL || '';
     try {
       if (soilTestMode === 'monitoring' && monitoringCropId) {
         // Monitoring mode: submit soil readings → get health score + fertilizer plan

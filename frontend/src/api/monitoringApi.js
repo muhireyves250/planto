@@ -1,16 +1,16 @@
 import { getCached, setCached, clearCached } from './cache';
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080';
+const BASE_URL = import.meta.env.VITE_API_URL || '';
 
 function authHeaders() {
-  const user = JSON.parse(localStorage.getItem('planto_user'));
+  const user = JSON.parse(sessionStorage.getItem('planto_user'));
   return user?.access_token
     ? { Authorization: `Bearer ${user.access_token}` }
     : {};
 }
 
 async function handle(res) {
-  if (res.status === 401) { localStorage.removeItem('planto_user'); window.location.reload(); }
+  if (res.status === 401) { sessionStorage.removeItem('planto_user'); window.location.reload(); }
   if (!res.ok) throw new Error(res.status);
   if (res.status === 204) return null;
   return res.json();
@@ -47,7 +47,7 @@ export const monitoringApi = {
       body: JSON.stringify(monitoringData),
     }).then(handle);
     // Invalidate so the next getMyCrops fetch returns fresh health/soil data
-    const user = JSON.parse(localStorage.getItem('planto_user'));
+    const user = JSON.parse(sessionStorage.getItem('planto_user'));
     if (user?.id) clearCached(`my_crops_${user.id}`);
     return data;
   },
@@ -57,7 +57,7 @@ export const monitoringApi = {
       method: 'PUT',
       headers: authHeaders(),
     }).then(handle);
-    const user = JSON.parse(localStorage.getItem('planto_user'));
+    const user = JSON.parse(sessionStorage.getItem('planto_user'));
     if (user?.id) clearCached(`my_crops_${user.id}`);
     return data;
   },
@@ -67,7 +67,7 @@ export const monitoringApi = {
       method: 'DELETE',
       headers: authHeaders(),
     }).then(handle);
-    const user = JSON.parse(localStorage.getItem('planto_user'));
+    const user = JSON.parse(sessionStorage.getItem('planto_user'));
     if (user?.id) clearCached(`my_crops_${user.id}`);
     return data;
   },

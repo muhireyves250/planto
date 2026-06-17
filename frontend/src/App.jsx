@@ -14,6 +14,7 @@ const Monitoring = lazy(() => import('./pages/Monitoring'));
 const SoilTest = lazy(() => import('./pages/SoilTest'));
 const AgronomistDashboard = lazy(() => import('./pages/AgronomistDashboard'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const AdminManage    = lazy(() => import('./pages/AdminManage'));
 import { useNotifications } from './hooks/useNotifications';
 import NotificationCenter from './components/NotificationCenter';
 import { monitoringApi } from './api/monitoringApi';
@@ -61,11 +62,11 @@ function App() {
   
   const [user, setUser] = useState(() => {
     try {
-      const savedUser = localStorage.getItem('planto_user');
+      const savedUser = sessionStorage.getItem('planto_user');
       return (savedUser && savedUser !== 'undefined') ? JSON.parse(savedUser) : null;
     } catch (err) {
       console.error("Failed to parse planto_user:", err);
-      localStorage.removeItem('planto_user');
+      sessionStorage.removeItem('planto_user');
       return null;
     }
   });
@@ -75,7 +76,7 @@ function App() {
 
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     try {
-      const savedUser = localStorage.getItem('planto_user');
+      const savedUser = sessionStorage.getItem('planto_user');
       return !!(savedUser && savedUser !== 'undefined');
     } catch (err) {
       return false;
@@ -101,7 +102,7 @@ function App() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [reportModal, setReportModal] = useState(null); // null | 'success' | 'error'
-  const [avatar, setAvatar] = useState(() => { try { return localStorage.getItem('planto_avatar') || null; } catch { return null; } });
+  const [avatar, setAvatar] = useState(() => { try { return sessionStorage.getItem('planto_avatar') || null; } catch { return null; } });
   const avatarInputRef = React.useRef(null);
 
   useEffect(() => {
@@ -164,9 +165,17 @@ function App() {
   const handleLogout = () => {
     setShowLogoutModal(false);
     setLoggingOut(true);
+    // Tell the backend so this token can't be reused — fire-and-forget, never blocks the UI
+    if (user?.access_token) {
+      const BASE_URL = import.meta.env.VITE_API_URL || '';
+      fetch(`${BASE_URL}/logout`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${user.access_token}` },
+      }).catch(() => {});
+    }
     setTimeout(() => {
-      localStorage.removeItem('planto_user');
-      localStorage.removeItem('planto_avatar');
+      sessionStorage.removeItem('planto_user');
+      sessionStorage.removeItem('planto_avatar');
       setIsAuthenticated(false);
       setUser(null);
       setAvatar(null);
@@ -183,9 +192,9 @@ function App() {
     reader.onload = async (ev) => {
       const base64 = ev.target.result;
       setAvatar(base64);
-      localStorage.setItem('planto_avatar', base64);
+      sessionStorage.setItem('planto_avatar', base64);
       // Persist to backend
-      const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080';
+      const BASE_URL = import.meta.env.VITE_API_URL || '';
       try {
         await fetch(`${BASE_URL}/settings/${user?.id}`, {
           method: 'PUT',
@@ -198,12 +207,12 @@ function App() {
   };
 
   const onLoginSuccess = async (userData) => {
-    localStorage.setItem('planto_user', JSON.stringify(userData));
+    sessionStorage.setItem('planto_user', JSON.stringify(userData));
     setUser(userData);
     setIsAuthenticated(true);
     // Load avatar from backend
     try {
-      const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080';
+      const BASE_URL = import.meta.env.VITE_API_URL || '';
       const res = await fetch(`${BASE_URL}/settings/${userData.id}`, {
         headers: { 'Authorization': `Bearer ${userData.access_token}` },
       });
@@ -211,7 +220,7 @@ function App() {
         const profile = await res.json();
         if (profile.avatar) {
           setAvatar(profile.avatar);
-          localStorage.setItem('planto_avatar', profile.avatar);
+          sessionStorage.setItem('planto_avatar', profile.avatar);
         }
       }
     } catch {}
@@ -400,7 +409,7 @@ function App() {
 
       const ipGeoFallback = async () => {
         try {
-          const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080';
+          const BASE_URL = import.meta.env.VITE_API_URL || '';
           const res = await fetch(`${BASE_URL}/weather/geoip`);
           const d = await res.json();
           if (d?.lat && d?.lng) fetchWeather(d.lat, d.lng);
@@ -417,8 +426,8 @@ function App() {
           (pos) => fetchWeather(pos.coords.latitude, pos.coords.longitude),
           async () => {
             // Denied/failed → Priority 3: farm_location text geocoding
-            const storedUser = (() => { try { return JSON.parse(localStorage.getItem('planto_user')); } catch { return null; } })();
-            const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080';
+            const storedUser = (() => { try { return JSON.parse(sessionStorage.getItem('planto_user')); } catch { return null; } })();
+            const BASE_URL = import.meta.env.VITE_API_URL || '';
             try {
               const settingsRes = await fetch(`${BASE_URL}/settings/${storedUser?.id}`);
               if (settingsRes.ok) {
@@ -436,8 +445,8 @@ function App() {
         );
       } else {
         // No geolocation API → try farm_location then IP
-        const storedUser = (() => { try { return JSON.parse(localStorage.getItem('planto_user')); } catch { return null; } })();
-        const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080';
+        const storedUser = (() => { try { return JSON.parse(sessionStorage.getItem('planto_user')); } catch { return null; } })();
+        const BASE_URL = import.meta.env.VITE_API_URL || '';
         try {
           const settingsRes = await fetch(`${BASE_URL}/settings/${storedUser?.id}`);
           if (settingsRes.ok) {
@@ -557,12 +566,17 @@ function App() {
             Planto
           </div>
           <div className="nav-links">
-            {user?.role === 'agronomist' && !impersonatedFarmId ? (
+            {user?.role === 'admin' && !impersonatedFarmId ? (
+              <>
+                <Link to="/admin" className={`nav-item ${activeTab === 'admin' ? 'active' : ''}`}>Overview</Link>
+                <Link to="/admin/manage" className={`nav-item ${activeTab === 'admin/manage' ? 'active' : ''}`}>Manage</Link>
+              </>
+            ) : user?.role === 'agronomist' && !impersonatedFarmId ? (
               <>
                 <Link to="/my-farms" className={`nav-item ${activeTab === 'my-farms' ? 'active' : ''}`}>My Farms</Link>
                 <Link to="/settings" className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`}>Settings</Link>
               </>
-            ) : (user?.role === 'farmer' || user?.role === 'admin' || impersonatedFarmId) && (
+            ) : (user?.role === 'farmer' || impersonatedFarmId) && (
               <>
                 {impersonatedFarmId && (
                   <button onClick={() => { setImpersonatedFarmId(null); setImpersonatedFarm(null); navigate('/my-farms'); }} className="nav-item" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1.5px solid rgba(239, 68, 68, 0.2)', fontWeight: 800, padding: '0.4rem 0.8rem', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', marginRight: '0.5rem' }}>
@@ -574,18 +588,13 @@ function App() {
                 <Link to="/monitoring" className={`nav-item ${activeTab === 'monitoring' ? 'active' : ''}`}>Monitoring</Link>
                 <Link to="/crop-status" className={`nav-item ${activeTab === 'crop-status' ? 'active' : ''}`}>Crop Status</Link>
                 {(!impersonatedFarmId) && <Link to="/settings" className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`}>Settings</Link>}
-                {user?.role === 'admin' && (
-                  <button onClick={() => setActiveTab('admin')} className={`nav-item ${activeTab === 'admin' ? 'active' : ''}`}>
-                    Admin
-                  </button>
-                )}
               </>
             )}
           </div>
         </nav>
 
         <div className="scrollable-content">
-          {isAuthenticated && (
+          {isAuthenticated && !activeTab.startsWith('admin') && (
             <header className="page-header pro-header animate-2" style={{ marginBottom: '1.5rem' }}>
               <div className="header-left">
                 <h1 className="welcome-text">
@@ -678,7 +687,7 @@ function App() {
             <Route path="/soil-test" element={<SoilTest user={user} impersonatedFarmId={impersonatedFarmId} impersonatedFarm={impersonatedFarm} params={soilTestParams} setParams={setSoilTestParams} setActiveTab={setActiveTab} setHeaderActions={setHeaderActions} setResult={(r) => { setRestChoice(null); setResult(r); }} setToast={setToast} />} />
             <Route path="/monitoring" element={<Monitoring user={user} impersonatedFarmId={impersonatedFarmId} impersonatedFarm={impersonatedFarm} setActiveTab={setActiveTab} setSoilTestParams={setSoilTestParams} setHeaderActions={setHeaderActions} />} />
             <Route path="/crop-status" element={<Reports user={user} impersonatedFarmId={impersonatedFarmId} impersonatedFarm={impersonatedFarm} setHeaderActions={setHeaderActions} setReportModal={setReportModal} />} />
-            <Route path="/settings" element={<Settings user={user} onUpdate={(u) => { setUser(u); localStorage.setItem('planto_user', JSON.stringify(u)); }} setHeaderActions={setHeaderActions} />} />
+            <Route path="/settings" element={<Settings user={user} onUpdate={(u) => { setUser(u); sessionStorage.setItem('planto_user', JSON.stringify(u)); }} setHeaderActions={setHeaderActions} />} />
             <Route path="/my-farms" element={
               <AgronomistDashboard
                 user={user}
@@ -694,6 +703,13 @@ function App() {
                 ? <AdminDashboard />
                 : <Navigate to="/dashboard" replace />
             } />
+            <Route path="/admin/manage" element={
+              user?.role === 'admin'
+                ? <AdminManage />
+                : <Navigate to="/dashboard" replace />
+            } />
+            <Route path="/login" element={<Navigate to={user?.role === 'admin' ? '/admin' : user?.role === 'agronomist' ? '/my-farms' : '/dashboard'} replace />} />
+            <Route path="/signup" element={<Navigate to={user?.role === 'admin' ? '/admin' : user?.role === 'agronomist' ? '/my-farms' : '/dashboard'} replace />} />
           </Routes>
           </Suspense>
         </div>

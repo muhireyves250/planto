@@ -23,9 +23,9 @@ class PlantedCrop(Base):
 
     user = relationship("User")
     farm = relationship("Farm", back_populates="planted_crops")
-    monitoring_data = relationship("SoilMonitoring", back_populates="planted_crop")
-    health_history = relationship("CropHealthHistory", back_populates="planted_crop")
-    fertilizer_plans = relationship("FertilizerPlan", back_populates="planted_crop")
+    monitoring_data = relationship("SoilMonitoring", back_populates="planted_crop", cascade="all, delete-orphan")
+    health_history = relationship("CropHealthHistory", back_populates="planted_crop", cascade="all, delete-orphan")
+    fertilizer_plans = relationship("FertilizerPlan", back_populates="planted_crop", cascade="all, delete-orphan")
 
 class CropHealthHistory(Base):
     __tablename__ = "crop_health_history"

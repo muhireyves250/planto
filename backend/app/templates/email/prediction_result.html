@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your Soil Test Recommendation</title>
+  <style>
+    body { margin: 0; padding: 0; background: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    .wrapper { max-width: 580px; margin: 40px auto; background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
+
+    /* ── Header ── */
+    .header { background: #1e362a; padding: 28px 32px; text-align: center; }
+    .header h1 { color: #fff; margin: 0 0 4px; font-size: 22px; font-weight: 800; }
+    .header p  { color: rgba(255,255,255,0.6); margin: 0; font-size: 13px; }
+
+    /* ── Greeting ── */
+    .greeting { padding: 24px 32px 8px; }
+    .greeting h2 { margin: 0 0 4px; font-size: 19px; font-weight: 800; color: #0f172a; }
+    .greeting p  { margin: 0; font-size: 14px; color: #64748b; }
+
+    /* ── Result Hero ── */
+    .hero { padding: 20px 32px; border-bottom: 1px solid #f1f5f9; }
+    .crop-name { font-size: 32px; font-weight: 900; color: #0f172a; margin: 0 0 6px; }
+    .status-badge { display: inline-block; padding: 5px 14px; border-radius: 99px; font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+    .badge-safe   { background: #dcfce7; color: #16a34a; }
+    .badge-caution{ background: #fef3c7; color: #d97706; }
+    .badge-rest   { background: #fee2e2; color: #dc2626; }
+    .confidence   { font-size: 13px; color: #64748b; margin-top: 8px; }
+    .confidence strong { color: #0f172a; }
+
+    /* ── Rest Banner ── */
+    .rest-banner { background: #fff7ed; border: 1px solid #fdba74; border-radius: 12px; padding: 16px 18px; margin: 0 32px 4px; }
+    .rest-banner p { margin: 0; font-size: 13.5px; color: #92400e; line-height: 1.6; }
+
+    /* ── Section ── */
+    .section { padding: 20px 32px; border-bottom: 1px solid #f1f5f9; }
+    .section:last-of-type { border-bottom: none; }
+    .section-title { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: #94a3b8; margin: 0 0 14px; }
+
+    /* ── Advice list ── */
+    .advice-item { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 10px; }
+    .advice-icon { flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+    .advice-icon.green { background: #dcfce7; }
+    .advice-icon.amber { background: #fef3c7; }
+    .advice-icon.red   { background: #fee2e2; }
+    .advice-text { font-size: 13.5px; color: #334155; line-height: 1.55; }
+
+    /* ── Soil readings table ── */
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th { text-align: left; font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; padding: 0 0 8px; }
+    td { padding: 8px 0; color: #334155; border-top: 1px solid #f8fafc; }
+    td.val { font-weight: 700; text-align: right; }
+
+    /* ── CTA ── */
+    .cta-section { padding: 20px 32px; text-align: center; }
+    .cta-btn { display: inline-block; background: #16a34a; color: #fff; text-decoration: none; padding: 11px 28px; border-radius: 10px; font-size: 14px; font-weight: 700; }
+    .cta-btn.orange { background: #ea580c; }
+
+    /* ── Footer ── */
+    .footer { padding: 16px 32px; background: #f8fafc; text-align: center; font-size: 12px; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+
+    <!-- Header -->
+    <div class="header">
+      <h1>🌱 Planto</h1>
+      <p>AI Soil Analysis — {{ test_date }}</p>
+    </div>
+
+    <!-- Greeting -->
+    <div class="greeting">
+      <h2>Hi {{ full_name }},</h2>
+      <p>Your soil test is complete. Here is what our AI found.</p>
+    </div>
+
+    <!-- Result Hero -->
+    <div class="hero">
+      {% if is_rest %}
+        <div class="crop-name" style="color:#dc2626;">⚠ Rest the Land</div>
+        <span class="status-badge badge-rest">REST THE LAND</span>
+        <p class="confidence">Your soil needs recovery before any crop can grow well.</p>
+      {% else %}
+        <div class="crop-name">{{ crop_name }}</div>
+        <span class="status-badge {{ 'badge-safe' if status == 'SAFE TO PLANT' else 'badge-caution' }}">{{ status }}</span>
+        <p class="confidence">
+          AI Confidence: <strong>{{ confidence_pct }}%</strong>
+          {% if status == 'SAFE TO PLANT' %} — Great conditions for planting!
+          {% elif status == 'CAUTION' %} — Soil needs minor adjustments before planting.
+          {% endif %}
+        </p>
+      {% endif %}
+    </div>
+
+    <!-- What to do -->
+    <div class="section">
+      <div class="section-title">
+        {% if is_rest %}What you should do{% else %}Next steps{% endif %}
+      </div>
+      {% for step in advice %}
+      <div class="advice-item">
+        <div class="advice-icon {{ 'red' if is_rest else ('green' if loop.first else 'amber') }}">
+          {{ '⚠' if is_rest else ('✓' if loop.first else '→') }}
+        </div>
+        <div class="advice-text">{{ step }}</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Soil Readings -->
+    <div class="section">
+      <div class="section-title">Soil Readings Submitted</div>
+      <table>
+        <thead><tr><th>Parameter</th><th style="text-align:right">Value</th></tr></thead>
+        <tbody>
+          <tr><td>Nitrogen (N)</td><td class="val">{{ n }} mg/kg</td></tr>
+          <tr><td>Phosphorus (P)</td><td class="val">{{ p }} mg/kg</td></tr>
+          <tr><td>Potassium (K)</td><td class="val">{{ k }} mg/kg</td></tr>
+          <tr><td>pH</td><td class="val">{{ ph }}</td></tr>
+          <tr><td>Moisture</td><td class="val">{{ moisture }}%</td></tr>
+          <tr><td>Temperature</td><td class="val">{{ temperature }}°C</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- CTA -->
+    <div class="cta-section">
+      {% if is_rest %}
+        <a href="{{ app_url }}/soil-test" class="cta-btn orange">Re-test Soil When Ready →</a>
+      {% else %}
+        <a href="{{ app_url }}/monitoring" class="cta-btn">Track {{ crop_name }} Growth →</a>
+      {% endif %}
+    </div>
+
+    <div class="footer">
+      This email was sent automatically after a soil test on Planto.<br>
+      You are receiving this because you tested your soil on {{ test_date }}.
+    </div>
+
+  </div>
+</body>
+</html>

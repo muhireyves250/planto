@@ -1,8 +1,8 @@
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080';
+const BASE_URL = import.meta.env.VITE_API_URL || '';
 
 export const predictionApi = {
   getPrediction: async (formData) => {
-    const user = JSON.parse(localStorage.getItem('planto_user'));
+    const user = JSON.parse(sessionStorage.getItem('planto_user'));
     const response = await fetch(`${BASE_URL}/predict`, {
       method: 'POST',
       headers: { 
@@ -16,7 +16,7 @@ export const predictionApi = {
   },
   
   getHistory: async () => {
-    const user = JSON.parse(localStorage.getItem('planto_user'));
+    const user = JSON.parse(sessionStorage.getItem('planto_user'));
     const response = await fetch(`${BASE_URL}/predictions`, {
       headers: {
         ...(user?.access_token ? { 'Authorization': `Bearer ${user.access_token}` } : {})

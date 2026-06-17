@@ -9,7 +9,7 @@ from app.schemas import auth as auth_schemas
 from app.repositories import user_repo
 from app.models.user import User
 from app.core.config import settings
-from app.core.rbac import role_required, get_current_user
+from app.core.rbac import role_required, get_current_user, oauth2_scheme, revoke_token
 from app.services.email_service import send_otp_email
 
 router = APIRouter(tags=["Authentication"])
@@ -26,6 +26,15 @@ async def register(user: auth_schemas.UserCreate, db: Session = Depends(get_db))
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     db_user = user_repo.create_user(db=db, user=user)
+
+    if not db_user.is_active:
+        # Agronomists need admin approval before they can sign in — no token issued yet.
+        return {
+            "success": True,
+            "pending_approval": True,
+            "message": "Your agronomist account has been created and is pending admin approval. You will be able to sign in once approved."
+        }
+
     access_token = create_access_token(data={
         "sub": db_user.email,
         "role": db_user.role,
@@ -42,6 +51,12 @@ async def register(user: auth_schemas.UserCreate, db: Session = Depends(get_db))
         }
     }
 
+@router.post("/logout")
+async def logout(token: str = Depends(oauth2_scheme)):
+    """Revoke this token immediately so it can't be reused after the user signs out."""
+    revoke_token(token)
+    return {"success": True}
+
 @router.post("/login")
 async def login(user: auth_schemas.UserLogin, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     db_user = user_repo.get_user_by_email(db, email=user.email)
@@ -52,6 +67,12 @@ async def login(user: auth_schemas.UserLogin, background_tasks: BackgroundTasks,
         raise HTTPException(
             status_code=401,
             detail=f"This account is registered as a {db_user.role}. Please select the correct role."
+        )
+
+    if not db_user.is_active:
+        raise HTTPException(
+            status_code=403,
+            detail="Your account is pending admin approval. You will be notified once approved."
         )
 
     otp = str(random.randint(100000, 999999))

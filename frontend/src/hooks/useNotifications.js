@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { notificationApi } from '../api/farmApi';
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080';
+const BASE_URL = import.meta.env.VITE_API_URL || '';
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -36,7 +36,7 @@ export function useNotifications(user) {
 
     const connect = () => {
       // Re-read token from localStorage on every connect so refreshed tokens are picked up
-      const stored = JSON.parse(localStorage.getItem('planto_user') || '{}');
+      const stored = JSON.parse(sessionStorage.getItem('planto_user') || '{}');
       const token = stored?.access_token;
       if (!token) return;
 

@@ -37,7 +37,7 @@ const Settings = ({ user, setUser, setHeaderActions, onLogout }) => {
 
   useEffect(() => {
     if (user?.id) {
-      const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080';
+      const BASE_URL = import.meta.env.VITE_API_URL || '';
       fetch(`${BASE_URL}/settings/${user.id}`)
         .then(res => res.json())
         .then(data => {
@@ -70,7 +70,7 @@ const Settings = ({ user, setUser, setHeaderActions, onLogout }) => {
     if (!user?.id) return;
     setSaving(true);
     try {
-      const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080';
+      const BASE_URL = import.meta.env.VITE_API_URL || '';
       const res = await fetch(`${BASE_URL}/settings/${user.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -105,7 +105,7 @@ const Settings = ({ user, setUser, setHeaderActions, onLogout }) => {
   }, [saving, settingsData, user, setHeaderActions]);
 
   const handleLogout = () => {
-    localStorage.removeItem('planto_user');
+    sessionStorage.removeItem('planto_user');
     if (setUser) setUser(null);
   };
 

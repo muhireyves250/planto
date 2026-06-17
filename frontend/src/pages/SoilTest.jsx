@@ -6,7 +6,6 @@ import {
   Sprout,
   Droplets,
   ThermometerSun,
-  CloudRain,
   CloudSun,
   MapPin,
   Loader2,
@@ -21,7 +20,7 @@ import { sensorApi } from '../api/sensorApi';
 import { agronomistApi } from '../api/agronomistApi';
 import SoilTestResult from './SoilTestResult';
 
-const API_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/predict` : 'http://127.0.0.1:8080/predict';
+const API_URL = (import.meta.env.VITE_API_URL || '') + '/predict';
 
 const calculateGuestIntelligence = (cropName, inputValues) => {
   const targets = {
@@ -156,10 +155,12 @@ const SoilTest = ({
     const poll = async () => {
       try {
         const result = await sensorApi.getLatest();
+        const isActive = !!result.data?.active;
         const hasData = result.data?.n != null;
-        setSensorActive(!!result.data?.active);
+        setSensorActive(isActive);
         setSensorHasData(hasData);
-        if (hasData) {
+        // Only auto-fill when sensor is live — stale/disconnected data must not overwrite manual entries
+        if (isActive && hasData) {
           setFormData(prev => ({
             ...prev,
             n: String(result.data.n),

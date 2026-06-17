@@ -19,6 +19,7 @@ from app.services.crop_monitoring import (
 from app.models.planted_crop import PlantedCrop, CropHealthHistory
 from app.models.fertilizer import FertilizerPlan
 from app.models.alert import Alert
+from app.services.cascade_delete import delete_planted_crop_cascade
 
 router = APIRouter(tags=["Monitoring"])
 
@@ -299,6 +300,6 @@ async def delete_planted_crop(plant_id: UUID, db: Session = Depends(get_db), cur
         raise HTTPException(status_code=404, detail="Planted crop not found")
     if db_plant.user_id != current_user.id and current_user.role not in ["admin", "agronomist"]:
         raise HTTPException(status_code=403, detail="Not authorized to delete this crop")
-    db.delete(db_plant)
+    delete_planted_crop_cascade(db, db_plant)
     db.commit()
     return {"success": True, "message": "Planted crop deleted"}

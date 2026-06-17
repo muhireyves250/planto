@@ -127,6 +127,51 @@ async def send_agronomist_digest_email(to_email: str, full_name: str, farms: lis
         logger.error("Failed to send agronomist digest to %s: %s", to_email, e)
 
 
+async def send_prediction_email(
+    to_email: str,
+    full_name: str,
+    crop: str,
+    confidence: float,
+    advice: list,
+    status: str,
+    n: float,
+    p: float,
+    k: float,
+    ph: float,
+    moisture: float,
+    temperature: float,
+) -> None:
+    from datetime import date
+
+    is_rest = status == "REST THE LAND"
+    confidence_pct = round(confidence * 100) if confidence <= 1 else round(confidence)
+    crop_name = crop.title()
+
+    subject = (
+        "⚠ Your Soil Needs to Rest — Planto AI Report"
+        if is_rest
+        else f"🌱 AI Recommends {crop_name} — Planto Soil Report"
+    )
+
+    try:
+        html = _jinja_env.get_template("prediction_result.html").render(
+            full_name=full_name,
+            crop_name=crop_name,
+            is_rest=is_rest,
+            status=status,
+            confidence_pct=confidence_pct,
+            advice=advice,
+            n=round(n, 1), p=round(p, 1), k=round(k, 1),
+            ph=round(ph, 2), moisture=round(moisture, 1), temperature=round(temperature, 1),
+            test_date=date.today().strftime("%B %d, %Y"),
+            app_url=APP_URL,
+        )
+        await _send(to_email, subject, html)
+        logger.info("Prediction email sent to %s (%s)", to_email, crop_name)
+    except Exception as e:
+        logger.error("Failed to send prediction email to %s: %s", to_email, e)
+
+
 async def send_soil_test_email(
     to_email: str,
     full_name: str,

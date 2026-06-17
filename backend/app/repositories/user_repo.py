@@ -15,11 +15,13 @@ def create_user(db: Session, user: UserCreate):
     # Ensure admin cannot be created via signup
     final_role = user.role if user.role in ["farmer", "agronomist"] else "farmer"
     
+    # Agronomists start inactive until admin approves
     db_user = User(
         email=user.email,
         full_name=user.full_name,
         hashed_password=hashed_password,
-        role=final_role
+        role=final_role,
+        is_active=(final_role != "agronomist"),
     )
     db.add(db_user)
     db.commit()
