@@ -22,6 +22,7 @@ OTP_EXEMPT_EMAILS = {
     "admin@planto.app",
     "uweragrace741@gmail.com",
     "muhireyves007@gmail.com",
+    "gbaziramwabo@gmail.com",
 }
 
 # Reusable httpx client — avoids TCP handshake overhead per Google login
