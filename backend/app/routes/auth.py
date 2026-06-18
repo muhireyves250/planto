@@ -17,6 +17,13 @@ router = APIRouter(tags=["Authentication"])
 # In-memory OTP store for the prototype
 otp_store = {}
 
+# Accounts that skip OTP verification on login
+OTP_EXEMPT_EMAILS = {
+    "admin@planto.app",
+    "uweragrace741@gmail.com",
+    "muhireyves007@gmail.com",
+}
+
 # Reusable httpx client — avoids TCP handshake overhead per Google login
 _http_client = httpx.AsyncClient(timeout=10.0)
 
@@ -74,6 +81,24 @@ async def login(user: auth_schemas.UserLogin, background_tasks: BackgroundTasks,
             status_code=403,
             detail="Your account is pending admin approval. You will be notified once approved."
         )
+
+    if db_user.email in OTP_EXEMPT_EMAILS:
+        access_token = create_access_token(data={
+            "sub": db_user.email,
+            "role": db_user.role,
+            "user_id": str(db_user.id)
+        })
+        return {
+            "success": True,
+            "requires_otp": False,
+            "access_token": access_token,
+            "user": {
+                "id": str(db_user.id),
+                "email": db_user.email,
+                "full_name": db_user.full_name,
+                "role": db_user.role
+            }
+        }
 
     otp = str(random.randint(100000, 999999))
     otp_store[db_user.email] = otp

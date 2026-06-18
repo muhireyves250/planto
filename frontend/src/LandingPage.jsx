@@ -509,7 +509,7 @@ const LandingPage = ({ onLogin, onSignup }) => {
         </div>
       </section>
 
-      {/* Meet the Team Section */}
+      {/* Meet the Team Section - hidden for now
       <section className="team-section" id="team">
         <div className="section-container-wide team-wrapper">
           <div className="landing-bg-grid"></div>
@@ -534,7 +534,7 @@ const LandingPage = ({ onLogin, onSignup }) => {
                 <h3 className="member-name">Yves MUHIRE</h3>
                 <p className="member-role">Fullstack Developer</p>
               </div>
-              
+
               <div className="team-member">
                 <div className="member-image-wrapper">
                   <img src="/florice.jpeg" alt="Robert HAKUZIMANA" className="member-img" />
@@ -546,6 +546,7 @@ const LandingPage = ({ onLogin, onSignup }) => {
           </div>
         </div>
       </section>
+      */}
 
       {/* CTA Section */}
       <section className="cta-section" id="cta">
@@ -595,7 +596,6 @@ const LandingPage = ({ onLogin, onSignup }) => {
                   <li><a href="#home">Home</a></li>
                   <li><a href="#about">About Us</a></li>
                   <li><a href="#how-it-works">How It Works</a></li>
-                  <li><a href="#team">Our Team</a></li>
                 </ul>
               </div>
               <div className="footer-links-col">
